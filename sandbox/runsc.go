@@ -5,10 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/rs/zerolog/log"
 
 	"boxer/config"
 	"boxer/internal/ioutil"
@@ -135,7 +136,7 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 		return nil, fmt.Errorf("%w: limit=%d bytes", ErrOutputLimit, limit)
 	}
 
-	slog.Debug("runsc complete", "exec_id", bundle.ExecID, "exit_code", exitCode, "wall_ms", wallMs)
+	log.Debug().Str("exec_id", bundle.ExecID).Int("exit_code", exitCode).Int64("wall_ms", wallMs).Msg("runsc complete")
 
 	return &Result{
 		ExitCode: exitCode,
@@ -153,6 +154,6 @@ func killSandbox(cfg *config.BoxerConfig, bundle *BundleDir) {
 		"kill", bundle.ExecID, "SIGKILL",
 	)
 	if err := cmd.Run(); err != nil {
-		slog.Warn("runsc kill failed", "exec_id", bundle.ExecID, "error", err)
+		log.Warn().Err(err).Str("exec_id", bundle.ExecID).Msg("runsc kill failed")
 	}
 }

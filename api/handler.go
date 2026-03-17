@@ -2,10 +2,10 @@ package api
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
 
 	"boxer/config"
 	"boxer/image"
@@ -66,7 +66,7 @@ func (h *Handler) Run(c *gin.Context) {
 
 	rootfs, err := h.cache.Rootfs(ctx, req.Image)
 	if err != nil {
-		slog.ErrorContext(ctx, "image pull failed", "image", req.Image, "error", err)
+		zerolog.Ctx(ctx).Error().Err(err).Str("image", req.Image).Msg("image pull failed")
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "image pull failed: " + err.Error()})
 		return
 	}
@@ -106,12 +106,12 @@ func (h *Handler) Run(c *gin.Context) {
 		return
 	}
 
-	slog.InfoContext(ctx, "execution complete",
-		"exec_id", execID,
-		"image", req.Image,
-		"exit_code", result.ExitCode,
-		"wall_ms", result.WallMs,
-	)
+	zerolog.Ctx(ctx).Info().
+		Str("exec_id", execID).
+		Str("image", req.Image).
+		Int("exit_code", result.ExitCode).
+		Int64("wall_ms", result.WallMs).
+		Msg("execution complete")
 
 	c.JSON(http.StatusOK, RunResponse{
 		ExitCode: result.ExitCode,

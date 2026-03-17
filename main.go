@@ -9,10 +9,11 @@ package main
 
 import (
 	"flag"
-	"log/slog"
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 
@@ -24,20 +25,20 @@ import (
 )
 
 func main() {
+	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+
 	flag.String("config", "", "path to config JSON file")
 	flag.Parse()
 
 	cfg, err := config.Load()
 	if err != nil {
-		slog.Error("failed to load config", "error", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("failed to load config")
 	}
 
 	// Ensure required directories exist.
 	for _, dir := range []string{cfg.Home, cfg.StateRoot(), cfg.ImageStore()} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			slog.Error("failed to create directory", "path", dir, "error", err)
-			os.Exit(1)
+			log.Fatal().Err(err).Str("path", dir).Msg("failed to create directory")
 		}
 	}
 
@@ -65,22 +66,23 @@ func main() {
 		swaggerHandler(c)
 	})
 
-	slog.Info("boxer starting", "addr", cfg.ListenAddr, "platform", cfg.Platform)
+	log.Info().Str("addr", cfg.ListenAddr).Str("platform", cfg.Platform).Msg("boxer starting")
 	if err := r.Run(cfg.ListenAddr); err != nil {
-		slog.Error("server error", "error", err)
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("server error")
 	}
 }
 
-// requestLogger returns a Gin middleware that logs each request with slog.
+// requestLogger returns a Gin middleware that logs each request with zerolog.
 func requestLogger() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		ctx := log.Logger.WithContext(c.Request.Context())
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
-		slog.Info("request",
-			"method", c.Request.Method,
-			"path", c.Request.URL.Path,
-			"status", c.Writer.Status(),
-			"latency_ms", c.GetInt64("latency_ms"),
-		)
+		log.Info().
+			Str("method", c.Request.Method).
+			Str("path", c.Request.URL.Path).
+			Int("status", c.Writer.Status()).
+			Int64("latency_ms", c.GetInt64("latency_ms")).
+			Msg("request")
 	}
 }

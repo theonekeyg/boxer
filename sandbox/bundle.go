@@ -3,10 +3,10 @@ package sandbox
 import (
 	"encoding/json"
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
 
+	"github.com/rs/zerolog/log"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/google/uuid"
@@ -52,7 +52,7 @@ func NewBundleDir(stateRoot, execID string, spec *specs.Spec) (*BundleDir, error
 		return nil, fmt.Errorf("write config.json: %w", err)
 	}
 
-	slog.Debug("created OCI bundle", "exec_id", execID, "config_json", configPath)
+	log.Debug().Str("exec_id", execID).Str("config_json", configPath).Msg("created OCI bundle")
 
 	return &BundleDir{
 		ExecID:     execID,
@@ -70,6 +70,6 @@ func (b *BundleDir) RunscRoot() string { return filepath.Join(b.execRoot, "runsc
 // Cleanup removes the entire execution root. Errors are logged, not returned.
 func (b *BundleDir) Cleanup() {
 	if err := os.RemoveAll(b.execRoot); err != nil {
-		slog.Warn("failed to remove exec root", "exec_id", b.ExecID, "error", err)
+		log.Warn().Err(err).Str("exec_id", b.ExecID).Msg("failed to remove exec root")
 	}
 }
