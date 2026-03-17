@@ -4,11 +4,15 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-func TestDefaultConfigValues(t *testing.T) {
-	cfg := defaultConfig()
+func TestDefaultConfig(t *testing.T) {
+	cfg, err := defaultConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if cfg.RunscPath != "/usr/local/bin/runsc" {
 		t.Errorf("unexpected runsc_path: %s", cfg.RunscPath)
 	}
@@ -26,8 +30,35 @@ func TestDefaultConfigValues(t *testing.T) {
 	}
 }
 
+func TestDerivedPaths(t *testing.T) {
+	cfg := BoxerConfig{Home: "/custom/boxer"}
+	if cfg.StateRoot() != "/custom/boxer/run" {
+		t.Errorf("unexpected StateRoot: %s", cfg.StateRoot())
+	}
+	if cfg.ImageStore() != "/custom/boxer/images" {
+		t.Errorf("unexpected ImageStore: %s", cfg.ImageStore())
+	}
+	if cfg.ConfigFile() != "/custom/boxer/config.json" {
+		t.Errorf("unexpected ConfigFile: %s", cfg.ConfigFile())
+	}
+}
+
+func TestDefaultHome_UnderUserHome(t *testing.T) {
+	cfg, err := defaultConfig()
+	if err != nil {
+		t.Fatal(err)
+	}
+	home, _ := os.UserHomeDir()
+	if !strings.HasPrefix(cfg.Home, home) {
+		t.Errorf("expected Home to be under %s, got %s", home, cfg.Home)
+	}
+	if filepath.Base(cfg.Home) != ".boxer" {
+		t.Errorf("expected Home to end in .boxer, got %s", cfg.Home)
+	}
+}
+
 func TestResolveLimits_NoOverride(t *testing.T) {
-	cfg := defaultConfig()
+	cfg, _ := defaultConfig()
 	limits := cfg.ResolveLimits(nil)
 	if limits.CPUCores == nil || *limits.CPUCores != 1.0 {
 		t.Error("expected cpu_cores from defaults")
@@ -38,13 +69,12 @@ func TestResolveLimits_NoOverride(t *testing.T) {
 }
 
 func TestResolveLimits_PartialOverride(t *testing.T) {
-	cfg := defaultConfig()
+	cfg, _ := defaultConfig()
 	mem := int64(512)
 	limits := cfg.ResolveLimits(&ResourceLimits{MemoryMB: &mem})
 	if *limits.MemoryMB != 512 {
 		t.Errorf("expected memory_mb=512, got %d", *limits.MemoryMB)
 	}
-	// unset fields fall back to defaults
 	if limits.CPUCores == nil || *limits.CPUCores != 1.0 {
 		t.Error("expected cpu_cores from defaults when not overridden")
 	}
@@ -54,7 +84,7 @@ func TestResolveLimits_PartialOverride(t *testing.T) {
 }
 
 func TestResolveLimits_FullOverride(t *testing.T) {
-	cfg := defaultConfig()
+	cfg, _ := defaultConfig()
 	cpu := 0.5
 	mem := int64(128)
 	pids := int64(16)
@@ -88,6 +118,7 @@ func TestLoad_FromFile(t *testing.T) {
 	dir := t.TempDir()
 	cfgFile := filepath.Join(dir, "config.json")
 	data := `{
+		"home": "/custom/boxer",
 		"runsc_path": "/custom/runsc",
 		"platform": "kvm",
 		"listen_addr": ":9090"
@@ -101,6 +132,9 @@ func TestLoad_FromFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if cfg.Home != "/custom/boxer" {
+		t.Errorf("unexpected home: %s", cfg.Home)
+	}
 	if cfg.RunscPath != "/custom/runsc" {
 		t.Errorf("unexpected runsc_path: %s", cfg.RunscPath)
 	}
@@ -109,6 +143,10 @@ func TestLoad_FromFile(t *testing.T) {
 	}
 	if cfg.ListenAddr != ":9090" {
 		t.Errorf("unexpected listen_addr: %s", cfg.ListenAddr)
+	}
+	// Derived paths use the overridden Home.
+	if cfg.StateRoot() != "/custom/boxer/run" {
+		t.Errorf("unexpected StateRoot: %s", cfg.StateRoot())
 	}
 	// unspecified field should retain default
 	if cfg.OutputLimitBytes != 10*1024*1024 {
@@ -128,7 +166,7 @@ func TestLoad_DefaultsWhenNoFile(t *testing.T) {
 }
 
 func TestConfigRoundtrip(t *testing.T) {
-	cfg := defaultConfig()
+	cfg, _ := defaultConfig()
 	data, err := json.Marshal(&cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -140,7 +178,7 @@ func TestConfigRoundtrip(t *testing.T) {
 	if back.RunscPath != cfg.RunscPath {
 		t.Errorf("roundtrip mismatch: %s != %s", back.RunscPath, cfg.RunscPath)
 	}
-	if back.Platform != cfg.Platform {
-		t.Errorf("roundtrip mismatch: %s != %s", back.Platform, cfg.Platform)
+	if back.Home != cfg.Home {
+		t.Errorf("roundtrip home mismatch: %s != %s", back.Home, cfg.Home)
 	}
 }

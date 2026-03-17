@@ -1,0 +1,32 @@
+version: '3'
+
+tasks:
+  default:
+    desc: "Show available tasks"
+    cmds:
+      - task --list
+
+  build:
+    desc: "Build the boxer binary"
+    cmds:
+      - mkdir -p bin
+      - go build -o bin/boxer .
+    sources:
+      - "**/*.go"
+    generates:
+      - bin/boxer
+
+  test:
+    desc: "Run unit tests"
+    cmds:
+      - go test ./... -count=1
+
+  swagger:
+    desc: "Regenerate Swagger docs from source annotations"
+    cmds:
+      - go run github.com/swaggo/swag/cmd/swag@latest init -g main.go -o docs
+    sources:
+      - "api/*.go"
+      - "main.go"
+    generates:
+      - docs/swagger.yaml

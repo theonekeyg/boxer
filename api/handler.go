@@ -25,16 +25,35 @@ func NewHandler(cfg *config.BoxerConfig, cache *image.ImageCache, executor *sand
 	return &Handler{cfg: cfg, cache: cache, executor: executor}
 }
 
-// Health handles GET /healthz.
+// Health godoc
+// @Summary     Health check
+// @Description Returns {"ok": true} when the service is running
+// @Tags        system
+// @Produce     json
+// @Success     200  {object}  map[string]bool
+// @Router      /healthz [get]
 func (h *Handler) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }
 
-// Run handles POST /run.
+// Run godoc
+// @Summary     Execute a command in a sandboxed container
+// @Description Pulls the image if not cached, then runs the command inside a
+// @Description gVisor sandbox. Returns stdout, stderr, exit code, and wall time.
+// @Tags        execution
+// @Accept      json
+// @Produce     json
+// @Param       request  body      RunRequest    true  "Execution parameters"
+// @Success     200      {object}  RunResponse         "Command completed (any exit code)"
+// @Failure     400      {object}  ErrorResponse       "Invalid request body"
+// @Failure     408      {object}  ErrorResponse       "Wall-clock timeout exceeded"
+// @Failure     500      {object}  ErrorResponse       "Internal error (pull failed, runsc error)"
+// @Failure     507      {object}  ErrorResponse       "Output exceeded limit"
+// @Router      /run [post]
 func (h *Handler) Run(c *gin.Context) {
 	var req RunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
 		return
 	}
 	if req.Cwd == "" {
@@ -48,7 +67,7 @@ func (h *Handler) Run(c *gin.Context) {
 	rootfs, err := h.cache.Rootfs(ctx, req.Image)
 	if err != nil {
 		slog.ErrorContext(ctx, "image pull failed", "image", req.Image, "error", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "image pull failed: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "image pull failed: " + err.Error()})
 		return
 	}
 
@@ -60,13 +79,13 @@ func (h *Handler) Run(c *gin.Context) {
 		WithLimits(limits).
 		Build()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "spec build failed: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "spec build failed: " + err.Error()})
 		return
 	}
 
-	bundle, err := sandbox.NewBundleDir(h.cfg.StateRoot, execID, spec)
+	bundle, err := sandbox.NewBundleDir(h.cfg.StateRoot(), execID, spec)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "bundle setup failed: " + err.Error()})
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "bundle setup failed: " + err.Error()})
 		return
 	}
 	defer bundle.Cleanup()
@@ -83,7 +102,7 @@ func (h *Handler) Run(c *gin.Context) {
 	result, err := h.executor.Run(runCtx, bundle, limits)
 	if err != nil {
 		status := httpStatus(err)
-		c.JSON(status, gin.H{"error": err.Error()})
+		c.JSON(status, ErrorResponse{Error: err.Error()})
 		return
 	}
 
