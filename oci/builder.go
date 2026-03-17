@@ -2,6 +2,7 @@ package oci
 
 import (
 	"fmt"
+	"os"
 
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 
@@ -71,14 +72,53 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 		env = append([]string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}, env...)
 	}
 
-	uid := uint32(65534)
-	gid := uint32(65534)
+	// Rootless mode: when boxer itself is not running as root we must create a
+	// user namespace so that gVisor's gofer process can set up mount namespaces
+	// without CAP_SYS_ADMIN on the host.
+	//
+	// Without an explicit UIDMapping in the OCI spec, gVisor defaults to a
+	// full identity mapping (0→0, size=4294967295). newuidmap(1) rejects that
+	// for unprivileged users because they do not own UID 0 on the host. We
+	// supply a single-entry mapping — host UID → container UID 0 — which
+	// newuidmap accepts as long as the entry falls within the caller's own UID.
+	//
+	// Inside the user namespace, UID 0 has no real root privileges on the host;
+	// it is confined to the namespace and further isolated by gVisor itself.
+	//
+	// When running as root (production), we skip the user namespace entirely
+	// and drop the container process to nobody (65534) instead.
+	rootless := os.Getuid() != 0
+
+	var uid, gid uint32
+	if rootless {
+		uid, gid = 0, 0
+	} else {
+		uid, gid = 65534, 65534
+	}
+
 	noNewPriv := true
 	readonly := true
 
 	nofile := uint64(256)
 	if b.limits != nil && b.limits.NoFile != nil {
 		nofile = *b.limits.NoFile
+	}
+
+	namespaces := []specs.LinuxNamespace{
+		{Type: specs.PIDNamespace},
+		{Type: specs.NetworkNamespace},
+		{Type: specs.IPCNamespace},
+		{Type: specs.UTSNamespace},
+		{Type: specs.MountNamespace},
+	}
+
+	var uidMappings, gidMappings []specs.LinuxIDMapping
+	if rootless {
+		namespaces = append(namespaces, specs.LinuxNamespace{Type: specs.UserNamespace})
+		hostUID := uint32(os.Getuid())
+		hostGID := uint32(os.Getgid())
+		uidMappings = []specs.LinuxIDMapping{{ContainerID: 0, HostID: hostUID, Size: 1}}
+		gidMappings = []specs.LinuxIDMapping{{ContainerID: 0, HostID: hostGID, Size: 1}}
 	}
 
 	spec := &specs.Spec{
@@ -101,14 +141,10 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 		},
 		Mounts: standardMounts(),
 		Linux: &specs.Linux{
-			Namespaces: []specs.LinuxNamespace{
-				{Type: specs.PIDNamespace},
-				{Type: specs.NetworkNamespace},
-				{Type: specs.IPCNamespace},
-				{Type: specs.UTSNamespace},
-				{Type: specs.MountNamespace},
-			},
-			Resources: b.buildResources(),
+			Namespaces:  namespaces,
+			UIDMappings: uidMappings,
+			GIDMappings: gidMappings,
+			Resources:   b.buildResources(),
 		},
 	}
 
@@ -135,6 +171,10 @@ func (b *SpecBuilder) buildResources() *specs.LinuxResources {
 	}
 	if b.limits.PidsLimit != nil {
 		res.Pids = &specs.LinuxPids{Limit: *b.limits.PidsLimit}
+	}
+
+	if res.CPU == nil && res.Memory == nil && res.Pids == nil {
+		return nil
 	}
 	return res
 }

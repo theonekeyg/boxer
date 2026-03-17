@@ -46,17 +46,21 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 		return nil, fmt.Errorf("create runsc state dir: %w", err)
 	}
 
-	//nolint:gosec // the path comes from trusted config
-	cmd := exec.CommandContext(ctx,
-		e.cfg.RunscPath,
+	args := []string{
 		"--root", bundle.RunscRoot(),
 		"--platform", e.cfg.Platform,
 		"--network=none",
 		"--log-format=text",
-		"run",
-		"--bundle", bundle.BundlePath(),
-		bundle.ExecID,
-	)
+		"--debug",
+		"--debug-log=/tmp/runsc-" + bundle.ExecID + ".log",
+	}
+	if e.cfg.IgnoreCgroups {
+		args = append(args, "--ignore-cgroups")
+	}
+	args = append(args, "run", "--bundle", bundle.BundlePath(), bundle.ExecID)
+
+	//nolint:gosec // the path comes from trusted config
+	cmd := exec.CommandContext(ctx, e.cfg.RunscPath, args...)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {

@@ -1,8 +1,9 @@
 {
   "runsc_path": "/usr/local/bin/runsc",
-  "platform": "systrap",
+  "platform": "ptrace",
   "listen_addr": ":8080",
   "output_limit_bytes": 10485760,
+  "ignore_cgroups": true,
   "defaults": {
     "cpu_cores": null,
     "memory_mb": null,

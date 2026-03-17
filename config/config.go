@@ -16,9 +16,10 @@ type BoxerConfig struct {
 	Home string `json:"home"`
 
 	RunscPath        string         `json:"runsc_path"`
-	Platform         string         `json:"platform"`           // systrap|ptrace|kvm
-	OutputLimitBytes int            `json:"output_limit_bytes"` // bytes, per stream
-	ListenAddr       string         `json:"listen_addr"`        // :8080
+	Platform         string         `json:"platform"`            // systrap|ptrace|kvm
+	OutputLimitBytes int            `json:"output_limit_bytes"`  // bytes, per stream
+	ListenAddr       string         `json:"listen_addr"`         // :8080
+	IgnoreCgroups    bool           `json:"ignore_cgroups"`      // skip cgroup setup (dev/rootless)
 	Defaults         ResourceLimits `json:"defaults"`
 }
 
