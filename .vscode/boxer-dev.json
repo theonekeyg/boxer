@@ -1,0 +1,13 @@
+{
+  "runsc_path": "/usr/local/bin/runsc",
+  "platform": "systrap",
+  "listen_addr": ":8080",
+  "output_limit_bytes": 10485760,
+  "defaults": {
+    "cpu_cores": 1.0,
+    "memory_mb": 256,
+    "pids_limit": 64,
+    "wall_clock_secs": 30,
+    "nofile": 256
+  }
+}

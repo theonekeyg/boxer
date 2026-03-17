@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "boxer",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}",
+      "args": ["--config", "${workspaceFolder}/.vscode/boxer-dev.json"],
+      "env": {},
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
