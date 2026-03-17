@@ -5,7 +5,7 @@ import "boxer/config"
 // RunRequest is the JSON body for POST /run.
 type RunRequest struct {
 	Image  string                 `json:"image"  binding:"required"  example:"python:3.12-slim"`
-	Cmd    []string               `json:"cmd"    binding:"required,min=1"`
+	Cmd    []string               `json:"cmd"    binding:"required,min=1" example:"python -c 'print(\"hello world\")'"`
 	Env    []string               `json:"env"    example:"HOME=/root"`
 	Cwd    string                 `json:"cwd"    example:"/app"`
 	Limits *config.ResourceLimits `json:"limits"`

@@ -9,6 +9,8 @@ definitions:
   api.RunRequest:
     properties:
       cmd:
+        example:
+        - python -c 'print("hello world")'
         items:
           type: string
         minItems: 1

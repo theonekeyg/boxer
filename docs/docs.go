@@ -122,7 +122,10 @@ const docTemplate = `{
                     "minItems": 1,
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "example": [
+                        "python -c 'print(\"hello world\")'"
+                    ]
                 },
                 "cwd": {
                     "type": "string",

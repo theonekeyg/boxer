@@ -51,11 +51,19 @@ func main() {
 
 	r.GET("/healthz", handler.Health)
 	r.POST("/run", handler.Run)
-	r.GET("/swagger", func(c *gin.Context) {
+	swaggerHandler := ginSwagger.WrapHandler(swaggerFiles.Handler)
+	serveSwaggerUI := func(c *gin.Context) {
 		c.Request.URL.Path = "/index.html"
 		swaggerFiles.Handler.ServeHTTP(c.Writer, c.Request)
+	}
+	r.GET("/swagger", serveSwaggerUI)
+	r.GET("/swagger/*any", func(c *gin.Context) {
+		if c.Param("any") == "/" {
+			serveSwaggerUI(c)
+			return
+		}
+		swaggerHandler(c)
 	})
-	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	slog.Info("boxer starting", "addr", cfg.ListenAddr, "platform", cfg.Platform)
 	if err := r.Run(cfg.ListenAddr); err != nil {
