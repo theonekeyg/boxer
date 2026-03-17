@@ -20,7 +20,7 @@ import (
 func TestIntegration_RunPython(t *testing.T) {
 	cfgPath := os.Getenv("BOXER_CONFIG")
 	if cfgPath == "" {
-		cfgPath = "../../config.dev.json"
+		cfgPath = "../config.dev.json"
 	}
 	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
 		t.Skipf("config file not found at %s; set BOXER_CONFIG to run integration tests", cfgPath)
