@@ -7,7 +7,7 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}",
-      "args": ["--config", "${workspaceFolder}/.vscode/boxer-dev.json"],
+      "args": ["--config", "${workspaceFolder}/config.dev.json"],
       "env": {},
       "cwd": "${workspaceFolder}"
     }

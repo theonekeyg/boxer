@@ -117,19 +117,19 @@ func (c *BoxerConfig) ResolveLimits(overrides *ResourceLimits) ResourceLimits {
 	if overrides == nil {
 		return result
 	}
-	if overrides.CPUCores != nil {
+	if overrides.CPUCores != nil && *overrides.CPUCores != 0 {
 		result.CPUCores = overrides.CPUCores
 	}
-	if overrides.MemoryMB != nil {
+	if overrides.MemoryMB != nil && *overrides.MemoryMB != 0 {
 		result.MemoryMB = overrides.MemoryMB
 	}
-	if overrides.PidsLimit != nil {
+	if overrides.PidsLimit != nil && *overrides.PidsLimit != 0 {
 		result.PidsLimit = overrides.PidsLimit
 	}
-	if overrides.WallClockSecs != nil {
+	if overrides.WallClockSecs != nil && *overrides.WallClockSecs != 0 {
 		result.WallClockSecs = overrides.WallClockSecs
 	}
-	if overrides.NoFile != nil {
+	if overrides.NoFile != nil && *overrides.NoFile != 0 {
 		result.NoFile = overrides.NoFile
 	}
 	return result

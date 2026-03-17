@@ -20,6 +20,11 @@ tasks:
     desc: "Run unit tests"
     cmds:
       - go test ./... -count=1
+  
+  run:
+    desc: "Run boxer locally"
+    cmds:
+      - go run . --config config.dev.json
 
   swagger:
     desc: "Regenerate Swagger docs from source annotations"

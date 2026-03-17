@@ -101,6 +101,7 @@ func (h *Handler) Run(c *gin.Context) {
 
 	result, err := h.executor.Run(runCtx, bundle, limits)
 	if err != nil {
+		zerolog.Ctx(ctx).Error().Err(err).Msg("execution failed")
 		status := httpStatus(err)
 		c.JSON(status, ErrorResponse{Error: err.Error()})
 		return
