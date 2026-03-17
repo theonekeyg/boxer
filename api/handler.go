@@ -8,7 +8,6 @@ import (
 	"github.com/rs/zerolog"
 
 	"boxer/config"
-	"boxer/image"
 	"boxer/oci"
 	"boxer/sandbox"
 )
@@ -16,12 +15,12 @@ import (
 // Handler holds the dependencies injected into HTTP handlers.
 type Handler struct {
 	cfg      *config.BoxerConfig
-	cache    *image.ImageCache
-	executor *sandbox.Executor
+	cache    ImageCacher
+	executor SandboxExecutor
 }
 
 // NewHandler constructs a Handler with all dependencies.
-func NewHandler(cfg *config.BoxerConfig, cache *image.ImageCache, executor *sandbox.Executor) *Handler {
+func NewHandler(cfg *config.BoxerConfig, cache ImageCacher, executor SandboxExecutor) *Handler {
 	return &Handler{cfg: cfg, cache: cache, executor: executor}
 }
 

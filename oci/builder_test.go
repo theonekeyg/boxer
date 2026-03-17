@@ -2,6 +2,7 @@ package oci
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	specs "github.com/opencontainers/runtime-spec/specs-go"
@@ -24,14 +25,60 @@ func TestBuild_BasicSpec(t *testing.T) {
 	if spec.Version != "1.0.0" {
 		t.Errorf("expected version 1.0.0, got %s", spec.Version)
 	}
-	if spec.Process.User.UID != 65534 {
-		t.Errorf("expected UID 65534, got %d", spec.Process.User.UID)
+	expectedUID := uint32(65534)
+	if os.Getuid() != 0 {
+		expectedUID = 0
+	}
+	if spec.Process.User.UID != expectedUID {
+		t.Errorf("expected UID %d, got %d", expectedUID, spec.Process.User.UID)
 	}
 	if !spec.Process.NoNewPrivileges {
 		t.Error("expected NoNewPrivileges=true")
 	}
 	if !spec.Root.Readonly {
 		t.Error("expected readonly rootfs")
+	}
+}
+
+func TestBuild_RootlessUserNamespace(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("rootless test only runs as non-root")
+	}
+	spec, err := baseBuilder().Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	hasUserNS := false
+	for _, ns := range spec.Linux.Namespaces {
+		if ns.Type == specs.UserNamespace {
+			hasUserNS = true
+			break
+		}
+	}
+	if !hasUserNS {
+		t.Error("expected UserNamespace in rootless mode")
+	}
+	if len(spec.Linux.UIDMappings) != 1 {
+		t.Fatalf("expected 1 UIDMapping, got %d", len(spec.Linux.UIDMappings))
+	}
+	if len(spec.Linux.GIDMappings) != 1 {
+		t.Fatalf("expected 1 GIDMapping, got %d", len(spec.Linux.GIDMappings))
+	}
+	if spec.Linux.UIDMappings[0].HostID != uint32(os.Getuid()) {
+		t.Errorf("UID mapping host ID: expected %d, got %d", os.Getuid(), spec.Linux.UIDMappings[0].HostID)
+	}
+	if spec.Linux.GIDMappings[0].HostID != uint32(os.Getgid()) {
+		t.Errorf("GID mapping host ID: expected %d, got %d", os.Getgid(), spec.Linux.GIDMappings[0].HostID)
+	}
+}
+
+func TestBuild_AllNilLimits_NoResources(t *testing.T) {
+	spec, err := baseBuilder().WithLimits(config.ResourceLimits{}).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Linux.Resources != nil {
+		t.Errorf("expected nil Resources for all-nil limits, got %+v", spec.Linux.Resources)
 	}
 }
 
