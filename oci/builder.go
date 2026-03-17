@@ -1,0 +1,169 @@
+package oci
+
+import (
+	"fmt"
+
+	specs "github.com/opencontainers/runtime-spec/specs-go"
+
+	"boxer/config"
+)
+
+// SpecBuilder constructs a hardened OCI runtime spec.
+type SpecBuilder struct {
+	rootfsPath string
+	execID     string
+	cmd        []string
+	env        []string
+	cwd        string
+	limits     *config.ResourceLimits
+}
+
+// NewSpecBuilder creates a SpecBuilder for the given rootfs path and execution ID.
+func NewSpecBuilder(rootfsPath, execID string) *SpecBuilder {
+	return &SpecBuilder{
+		rootfsPath: rootfsPath,
+		execID:     execID,
+		cwd:        "/",
+	}
+}
+
+func (b *SpecBuilder) WithCmd(cmd []string) *SpecBuilder {
+	b.cmd = cmd
+	return b
+}
+
+func (b *SpecBuilder) WithEnv(env []string) *SpecBuilder {
+	b.env = env
+	return b
+}
+
+func (b *SpecBuilder) WithCwd(cwd string) *SpecBuilder {
+	if cwd != "" {
+		b.cwd = cwd
+	}
+	return b
+}
+
+func (b *SpecBuilder) WithLimits(limits config.ResourceLimits) *SpecBuilder {
+	b.limits = &limits
+	return b
+}
+
+// Build produces a complete, hardened OCI spec.
+func (b *SpecBuilder) Build() (*specs.Spec, error) {
+	if b.rootfsPath == "" {
+		return nil, fmt.Errorf("rootfs path not set")
+	}
+	if len(b.cmd) == 0 {
+		return nil, fmt.Errorf("cmd not set")
+	}
+
+	env := b.env
+	// Always ensure PATH is available.
+	hasPath := false
+	for _, e := range env {
+		if len(e) >= 5 && e[:5] == "PATH=" {
+			hasPath = true
+			break
+		}
+	}
+	if !hasPath {
+		env = append([]string{"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"}, env...)
+	}
+
+	uid := uint32(65534)
+	gid := uint32(65534)
+	noNewPriv := true
+	readonly := true
+
+	nofile := uint64(256)
+	if b.limits != nil && b.limits.NoFile != nil {
+		nofile = *b.limits.NoFile
+	}
+
+	spec := &specs.Spec{
+		Version:  "1.0.0",
+		Hostname: b.execID,
+		Process: &specs.Process{
+			User:            specs.User{UID: uid, GID: gid},
+			Args:            b.cmd,
+			Env:             env,
+			Cwd:             b.cwd,
+			Capabilities:    &specs.LinuxCapabilities{},
+			NoNewPrivileges: noNewPriv,
+			Rlimits: []specs.POSIXRlimit{
+				{Type: "RLIMIT_NOFILE", Hard: nofile, Soft: nofile},
+			},
+		},
+		Root: &specs.Root{
+			Path:     b.rootfsPath,
+			Readonly: readonly,
+		},
+		Mounts: standardMounts(),
+		Linux: &specs.Linux{
+			Namespaces: []specs.LinuxNamespace{
+				{Type: specs.PIDNamespace},
+				{Type: specs.NetworkNamespace},
+				{Type: specs.IPCNamespace},
+				{Type: specs.UTSNamespace},
+				{Type: specs.MountNamespace},
+			},
+			Resources: b.buildResources(),
+		},
+	}
+
+	return spec, nil
+}
+
+func (b *SpecBuilder) buildResources() *specs.LinuxResources {
+	if b.limits == nil {
+		return nil
+	}
+	res := &specs.LinuxResources{}
+
+	if b.limits.CPUCores != nil {
+		period := uint64(100_000)
+		quota := int64(*b.limits.CPUCores * float64(period))
+		res.CPU = &specs.LinuxCPU{
+			Period: &period,
+			Quota:  &quota,
+		}
+	}
+	if b.limits.MemoryMB != nil {
+		limit := *b.limits.MemoryMB * 1024 * 1024
+		res.Memory = &specs.LinuxMemory{Limit: &limit}
+	}
+	if b.limits.PidsLimit != nil {
+		res.Pids = &specs.LinuxPids{Limit: *b.limits.PidsLimit}
+	}
+	return res
+}
+
+// standardMounts returns the required mounts every sandbox gets.
+func standardMounts() []specs.Mount {
+	return []specs.Mount{
+		{
+			Destination: "/proc",
+			Type:        "proc",
+			Source:      "proc",
+		},
+		{
+			Destination: "/dev",
+			Type:        "tmpfs",
+			Source:      "tmpfs",
+			Options:     []string{"nosuid", "noexec", "mode=755", "size=65536k"},
+		},
+		{
+			Destination: "/sys",
+			Type:        "sysfs",
+			Source:      "sysfs",
+			Options:     []string{"nosuid", "noexec", "nodev", "ro"},
+		},
+		{
+			Destination: "/tmp",
+			Type:        "tmpfs",
+			Source:      "tmpfs",
+			Options:     []string{"nosuid", "nodev", "size=65536k"},
+		},
+	}
+}
