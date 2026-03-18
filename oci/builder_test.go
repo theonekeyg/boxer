@@ -82,6 +82,48 @@ func TestBuild_AllNilLimits_NoResources(t *testing.T) {
 	}
 }
 
+// TestBuild_OnlyNoFile_NoLinuxResources verifies that setting only NoFile does
+// not populate spec.Linux.Resources (NoFile is enforced via RLIMIT_NOFILE on
+// spec.Process.Rlimits, not via cgroup resources).
+func TestBuild_OnlyNoFile_NoLinuxResources(t *testing.T) {
+	nofile := uint64(512)
+	spec, err := baseBuilder().WithLimits(config.ResourceLimits{NoFile: &nofile}).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Linux.Resources != nil {
+		t.Errorf("expected nil Linux.Resources when only NoFile is set, got %+v", spec.Linux.Resources)
+	}
+	// The value must be enforced as RLIMIT_NOFILE on the process.
+	found := false
+	for _, r := range spec.Process.Rlimits {
+		if r.Type == "RLIMIT_NOFILE" {
+			found = true
+			if r.Soft != nofile || r.Hard != nofile {
+				t.Errorf("RLIMIT_NOFILE: expected soft/hard=%d, got soft=%d hard=%d", nofile, r.Soft, r.Hard)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected RLIMIT_NOFILE in spec.Process.Rlimits")
+	}
+}
+
+// TestBuild_OnlyWallClockSecs_NoLinuxResources verifies that WallClockSecs does
+// not map into spec.Linux.Resources (there is no cgroup field for wall-clock
+// time; enforcement is handled outside the OCI spec). Build must succeed and
+// Linux.Resources must remain nil when no other cgroup limits are set.
+func TestBuild_OnlyWallClockSecs_NoLinuxResources(t *testing.T) {
+	wall := int64(30)
+	spec, err := baseBuilder().WithLimits(config.ResourceLimits{WallClockSecs: &wall}).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if spec.Linux.Resources != nil {
+		t.Errorf("expected nil Linux.Resources when only WallClockSecs is set, got %+v", spec.Linux.Resources)
+	}
+}
+
 func TestBuild_NoCaps(t *testing.T) {
 	spec, err := baseBuilder().Build()
 	if err != nil {
