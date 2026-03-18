@@ -77,7 +77,7 @@ func TestRun_MissingImage(t *testing.T) {
 
 func TestRun_ImagePullFailed(t *testing.T) {
 	cache := mocks.NewImageCacher(t)
-	cache.EXPECT().Rootfs(mock.Anything, mock.Anything).Return("", fmt.Errorf("pull error"))
+	cache.EXPECT().Rootfs(mock.Anything, "missing:img").Return("", fmt.Errorf("pull error"))
 
 	r := newTestHandler(t, cache, nil)
 	w := doRunRequest(t, r, runBody{Image: "missing:img", Cmd: []string{"sh"}})
@@ -89,10 +89,12 @@ func TestRun_ImagePullFailed(t *testing.T) {
 
 func TestRun_Timeout(t *testing.T) {
 	cache := mocks.NewImageCacher(t)
-	cache.EXPECT().Rootfs(mock.Anything, mock.Anything).Return("/fake/rootfs", nil)
+	cache.EXPECT().Rootfs(mock.Anything, "python:3.12-slim").Return("/fake/rootfs", nil)
 
 	exec := mocks.NewSandboxExecutor(t)
-	exec.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).
+	exec.EXPECT().Run(mock.Anything,
+		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
+		config.ResourceLimits{}).
 		Return(nil, fmt.Errorf("%w after 5000ms", sandbox.ErrTimeout))
 
 	r := newTestHandler(t, cache, exec)
@@ -105,10 +107,12 @@ func TestRun_Timeout(t *testing.T) {
 
 func TestRun_OutputLimit(t *testing.T) {
 	cache := mocks.NewImageCacher(t)
-	cache.EXPECT().Rootfs(mock.Anything, mock.Anything).Return("/fake/rootfs", nil)
+	cache.EXPECT().Rootfs(mock.Anything, "python:3.12-slim").Return("/fake/rootfs", nil)
 
 	exec := mocks.NewSandboxExecutor(t)
-	exec.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).
+	exec.EXPECT().Run(mock.Anything,
+		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
+		config.ResourceLimits{}).
 		Return(nil, fmt.Errorf("%w: limit=1024 bytes", sandbox.ErrOutputLimit))
 
 	r := newTestHandler(t, cache, exec)
@@ -121,10 +125,12 @@ func TestRun_OutputLimit(t *testing.T) {
 
 func TestRun_ExecutorError(t *testing.T) {
 	cache := mocks.NewImageCacher(t)
-	cache.EXPECT().Rootfs(mock.Anything, mock.Anything).Return("/fake/rootfs", nil)
+	cache.EXPECT().Rootfs(mock.Anything, "python:3.12-slim").Return("/fake/rootfs", nil)
 
 	exec := mocks.NewSandboxExecutor(t)
-	exec.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).
+	exec.EXPECT().Run(mock.Anything,
+		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
+		config.ResourceLimits{}).
 		Return(nil, fmt.Errorf("runsc exploded"))
 
 	r := newTestHandler(t, cache, exec)
@@ -137,10 +143,12 @@ func TestRun_ExecutorError(t *testing.T) {
 
 func TestRun_Success(t *testing.T) {
 	cache := mocks.NewImageCacher(t)
-	cache.EXPECT().Rootfs(mock.Anything, mock.Anything).Return("/fake/rootfs", nil)
+	cache.EXPECT().Rootfs(mock.Anything, "python:3.12-slim").Return("/fake/rootfs", nil)
 
 	exec := mocks.NewSandboxExecutor(t)
-	exec.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).
+	exec.EXPECT().Run(mock.Anything,
+		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
+		config.ResourceLimits{}).
 		Return(&sandbox.Result{
 			ExitCode: 0,
 			Stdout:   []byte("hello\n"),
@@ -171,10 +179,12 @@ func TestRun_Success(t *testing.T) {
 
 func TestRun_NonZeroExitCode(t *testing.T) {
 	cache := mocks.NewImageCacher(t)
-	cache.EXPECT().Rootfs(mock.Anything, mock.Anything).Return("/fake/rootfs", nil)
+	cache.EXPECT().Rootfs(mock.Anything, "python:3.12-slim").Return("/fake/rootfs", nil)
 
 	exec := mocks.NewSandboxExecutor(t)
-	exec.EXPECT().Run(mock.Anything, mock.Anything, mock.Anything).
+	exec.EXPECT().Run(mock.Anything,
+		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
+		config.ResourceLimits{}).
 		Return(&sandbox.Result{
 			ExitCode: 1,
 			Stdout:   []byte(""),
