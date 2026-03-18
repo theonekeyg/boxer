@@ -180,7 +180,7 @@ func (h *Handler) Run(c *gin.Context) {
 	// directory structure first so we can get that path, then re-build the spec.
 	// Actually we build spec first, then create bundle. To avoid a chicken-and-egg
 	// situation with the output dir path, we derive it ourselves here.
-	outputHostPath := outputDirPath(h.cfg.StateRoot(), execID)
+	outputHostPath := sandbox.OutputPath(h.cfg.StateRoot(), execID)
 	if err := os.MkdirAll(outputHostPath, 0o755); err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "create output dir: " + err.Error()})
 		return
@@ -258,8 +258,3 @@ func (h *Handler) Run(c *gin.Context) {
 	})
 }
 
-// outputDirPath returns the path that NewBundleDir will use for the output directory,
-// allowing the handler to pre-create it before building the OCI spec.
-func outputDirPath(stateRoot, execID string) string {
-	return filepath.Join(stateRoot, execID, "output")
-}

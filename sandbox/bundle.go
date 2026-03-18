@@ -62,6 +62,13 @@ func NewBundleDir(stateRoot, execID string, spec *specs.Spec) (*BundleDir, error
 	}, nil
 }
 
+// OutputPath returns the output directory path for the given execution before
+// the bundle is created. Use this when the path is needed prior to NewBundleDir
+// (e.g. to build OCI spec mounts). Must stay in sync with NewBundleDir's layout.
+func OutputPath(stateRoot, execID string) string {
+	return filepath.Join(stateRoot, execID, "output")
+}
+
 // BundlePath returns the path to the directory containing config.json.
 func (b *BundleDir) BundlePath() string { return b.bundlePath }
 
