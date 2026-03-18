@@ -41,9 +41,9 @@ func TestBuild_BasicSpec(t *testing.T) {
 }
 
 func TestBuild_RootlessUserNamespace(t *testing.T) {
-	const fakeUID, fakeGID = 1000, 1001
+	const fakeUID, fakeGID uint32 = 1000, 1001
 	spec, err := baseBuilder().
-		WithUIDProvider(func() int { return fakeUID }, func() int { return fakeGID }).
+		WithUIDProvider(func() int { return int(fakeUID) }, func() int { return int(fakeGID) }).
 		Build()
 	if err != nil {
 		t.Fatal(err)
