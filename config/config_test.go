@@ -176,6 +176,23 @@ func TestRunscBin_ExplicitPath(t *testing.T) {
 	}
 }
 
+func TestRunscBin_InPath(t *testing.T) {
+	dir := t.TempDir()
+	runscPath := filepath.Join(dir, "runsc")
+	if err := os.WriteFile(runscPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write fake runsc: %v", err)
+	}
+	t.Setenv("PATH", dir)
+	cfg := BoxerConfig{}
+	got, err := cfg.RunscBin()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != runscPath {
+		t.Errorf("expected %s, got %s", runscPath, got)
+	}
+}
+
 func TestRunscBin_NotInPath(t *testing.T) {
 	t.Setenv("PATH", "")
 	cfg := BoxerConfig{}
