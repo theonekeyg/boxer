@@ -17,6 +17,8 @@ type SpecBuilder struct {
 	env        []string
 	cwd        string
 	limits     *config.ResourceLimits
+	getUID     func() int
+	getGID     func() int
 }
 
 // NewSpecBuilder creates a SpecBuilder for the given rootfs path and execution ID.
@@ -25,7 +27,18 @@ func NewSpecBuilder(rootfsPath, execID string) *SpecBuilder {
 		rootfsPath: rootfsPath,
 		execID:     execID,
 		cwd:        "/",
+		getUID:     os.Getuid,
+		getGID:     os.Getgid,
 	}
+}
+
+// WithUIDProvider overrides the functions used to obtain the current process's
+// UID and GID. This is primarily useful in tests to simulate rootless mode
+// without actually running as a non-root user.
+func (b *SpecBuilder) WithUIDProvider(getUID, getGID func() int) *SpecBuilder {
+	b.getUID = getUID
+	b.getGID = getGID
+	return b
 }
 
 func (b *SpecBuilder) WithCmd(cmd []string) *SpecBuilder {
@@ -87,7 +100,7 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	//
 	// When running as root (production), we skip the user namespace entirely
 	// and drop the container process to nobody (65534) instead.
-	rootless := os.Getuid() != 0
+	rootless := b.getUID() != 0
 
 	var uid, gid uint32
 	if rootless {
@@ -115,8 +128,8 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	var uidMappings, gidMappings []specs.LinuxIDMapping
 	if rootless {
 		namespaces = append(namespaces, specs.LinuxNamespace{Type: specs.UserNamespace})
-		hostUID := uint32(os.Getuid())
-		hostGID := uint32(os.Getgid())
+		hostUID := uint32(b.getUID())
+		hostGID := uint32(b.getGID())
 		uidMappings = []specs.LinuxIDMapping{{ContainerID: 0, HostID: hostUID, Size: 1}}
 		gidMappings = []specs.LinuxIDMapping{{ContainerID: 0, HostID: hostGID, Size: 1}}
 	}

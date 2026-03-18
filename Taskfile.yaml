@@ -20,11 +20,33 @@ tasks:
     desc: "Run unit tests"
     cmds:
       - go test ./... -count=1
+
+  test-all:
+    desc: "Run all tests including integration"
+    cmds:
+      - go test ./... -count=1 -tags integration -timeout 120s
+
+  cover:
+    desc: "Run unit tests and generate HTML coverage report (coverage.html)"
+    cmds:
+      - go test ./... -count=1 -coverprofile=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
+
+  cover-all:
+    desc: "Run all tests including integration and generate HTML coverage report (coverage.html)"
+    cmds:
+      - go test ./... -count=1 -tags integration -timeout 120s -coverprofile=coverage.out
+      - go tool cover -html=coverage.out -o coverage.html
   
   run:
     desc: "Run boxer locally"
     cmds:
       - go run . --config config.dev.json
+
+  generate:
+    desc: "Generate mocks from interfaces"
+    cmds:
+      - go generate ./...
 
   swagger:
     desc: "Regenerate Swagger docs from source annotations"
