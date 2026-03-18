@@ -182,20 +182,22 @@ func (b *SpecBuilder) validateExtraMounts() error {
 	}
 
 	seen := make(map[string]bool, len(b.extraMounts))
-	for _, m := range b.extraMounts {
-		if m.Destination == "" {
+	for i := range b.extraMounts {
+		if b.extraMounts[i].Destination == "" {
 			return fmt.Errorf("mount has empty destination")
 		}
-		if !filepath.IsAbs(m.Destination) {
-			return fmt.Errorf("mount destination must be absolute: %q", m.Destination)
+		if !filepath.IsAbs(b.extraMounts[i].Destination) {
+			return fmt.Errorf("mount destination must be absolute: %q", b.extraMounts[i].Destination)
 		}
-		if reserved[m.Destination] {
-			return fmt.Errorf("mount destination conflicts with reserved mount: %q", m.Destination)
+		clean := filepath.Clean(b.extraMounts[i].Destination)
+		if reserved[clean] {
+			return fmt.Errorf("mount destination conflicts with reserved mount: %q", clean)
 		}
-		if seen[m.Destination] {
-			return fmt.Errorf("duplicate mount destination: %q", m.Destination)
+		if seen[clean] {
+			return fmt.Errorf("duplicate mount destination: %q", clean)
 		}
-		seen[m.Destination] = true
+		seen[clean] = true
+		b.extraMounts[i].Destination = clean
 	}
 	return nil
 }
