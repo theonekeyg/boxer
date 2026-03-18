@@ -56,12 +56,8 @@ func (h *Handler) Health(c *gin.Context) {
 func (h *Handler) UploadFile(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, int64(h.cfg.UploadLimitBytes))
 
-	path := c.PostForm("path")
-	if path == "" {
-		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "form field 'path' is required"})
-		return
-	}
-
+	// FormFile triggers ParseMultipartForm, which surfaces MaxBytesError.
+	// Must come before PostForm: Gin's PostForm swallows ParseMultipartForm errors.
 	fh, err := c.FormFile("file")
 	if err != nil {
 		var maxErr *http.MaxBytesError
@@ -70,6 +66,12 @@ func (h *Handler) UploadFile(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "form field 'file' is required: " + err.Error()})
+		return
+	}
+
+	path := c.PostForm("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "form field 'path' is required"})
 		return
 	}
 
