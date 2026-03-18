@@ -168,7 +168,7 @@ func (h *Handler) Run(c *gin.Context) {
 		}
 		extraMounts = append(extraMounts, specs.Mount{
 			Source:      hostPath,
-			Destination: "/" + filePath,
+			Destination: filepath.Join("/", filePath),
 			Type:        "bind",
 			Options:     []string{"rbind", "ro"},
 		})
