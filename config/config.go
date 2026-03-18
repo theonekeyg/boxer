@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 )
 
@@ -31,6 +32,19 @@ func (c *BoxerConfig) ImageStore() string { return filepath.Join(c.Home, "images
 
 // ConfigFile returns the path of the config file inside Home.
 func (c *BoxerConfig) ConfigFile() string { return filepath.Join(c.Home, "config.json") }
+
+// RunscBin returns the runsc binary path. If RunscPath is set it is used
+// directly; otherwise the binary is located via PATH.
+func (c *BoxerConfig) RunscBin() (string, error) {
+	if c.RunscPath != "" {
+		return c.RunscPath, nil
+	}
+	p, err := exec.LookPath("runsc")
+	if err != nil {
+		return "", fmt.Errorf("runsc not found in PATH (set runsc_path in config): %w", err)
+	}
+	return p, nil
+}
 
 // ResourceLimits holds per-execution resource constraints. All fields are
 // pointers so callers can distinguish "not set" from zero.
@@ -62,9 +76,8 @@ func defaultConfig() (BoxerConfig, error) {
 	wall := int64(30)
 	nofile := uint64(256)
 	return BoxerConfig{
-		Home:             home,
-		RunscPath:        "/usr/local/bin/runsc",
-		Platform:         "systrap",
+		Home:     home,
+		Platform: "systrap",
 		OutputLimitBytes: 10 * 1024 * 1024,
 		ListenAddr:       ":8080",
 		Defaults: ResourceLimits{

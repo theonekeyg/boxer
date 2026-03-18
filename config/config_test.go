@@ -13,8 +13,8 @@ func TestDefaultConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.RunscPath != "/usr/local/bin/runsc" {
-		t.Errorf("unexpected runsc_path: %s", cfg.RunscPath)
+	if cfg.RunscPath != "" {
+		t.Errorf("expected empty runsc_path in defaults, got %s", cfg.RunscPath)
 	}
 	if cfg.Platform != "systrap" {
 		t.Errorf("unexpected platform: %s", cfg.Platform)
@@ -160,8 +160,45 @@ func TestLoad_DefaultsWhenNoFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.RunscPath != "/usr/local/bin/runsc" {
-		t.Errorf("expected default runsc_path, got %s", cfg.RunscPath)
+	if cfg.RunscPath != "" {
+		t.Errorf("expected empty runsc_path when no config file, got %s", cfg.RunscPath)
+	}
+}
+
+func TestRunscBin_ExplicitPath(t *testing.T) {
+	cfg := BoxerConfig{RunscPath: "/custom/runsc"}
+	got, err := cfg.RunscBin()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != "/custom/runsc" {
+		t.Errorf("expected /custom/runsc, got %s", got)
+	}
+}
+
+func TestRunscBin_InPath(t *testing.T) {
+	dir := t.TempDir()
+	runscPath := filepath.Join(dir, "runsc")
+	if err := os.WriteFile(runscPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("write fake runsc: %v", err)
+	}
+	t.Setenv("PATH", dir)
+	cfg := BoxerConfig{}
+	got, err := cfg.RunscBin()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got != runscPath {
+		t.Errorf("expected %s, got %s", runscPath, got)
+	}
+}
+
+func TestRunscBin_NotInPath(t *testing.T) {
+	t.Setenv("PATH", "")
+	cfg := BoxerConfig{}
+	_, err := cfg.RunscBin()
+	if err == nil {
+		t.Error("expected error when runsc not in PATH")
 	}
 }
 
