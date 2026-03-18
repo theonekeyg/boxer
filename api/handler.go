@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -53,6 +54,8 @@ func (h *Handler) Health(c *gin.Context) {
 // @Failure     500   {object}  ErrorResponse
 // @Router      /files [post]
 func (h *Handler) UploadFile(c *gin.Context) {
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, int64(h.cfg.UploadLimitBytes))
+
 	path := c.PostForm("path")
 	if path == "" {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "form field 'path' is required"})
@@ -61,6 +64,11 @@ func (h *Handler) UploadFile(c *gin.Context) {
 
 	fh, err := c.FormFile("file")
 	if err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			c.JSON(http.StatusRequestEntityTooLarge, ErrorResponse{Error: "upload exceeds limit"})
+			return
+		}
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "form field 'file' is required: " + err.Error()})
 		return
 	}

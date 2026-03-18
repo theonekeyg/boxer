@@ -27,7 +27,8 @@ func init() {
 func newTestHandler(t *testing.T, cache ImageCacher, exec SandboxExecutor) *gin.Engine {
 	t.Helper()
 	cfg := &config.BoxerConfig{
-		Home: t.TempDir(),
+		Home:             t.TempDir(),
+		UploadLimitBytes: 10 * 1024 * 1024,
 	}
 	h := NewHandler(cfg, cache, exec, NewFileStore(t.TempDir()))
 	r := gin.New()
