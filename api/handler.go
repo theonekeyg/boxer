@@ -85,16 +85,16 @@ func (h *Handler) UploadFile(c *gin.Context) {
 // @Description Download any file from the store by its relative path (including output/<exec_id>/...)
 // @Tags        files
 // @Produce     application/octet-stream
-// @Param       filepath  path  string  true  "Relative file path"
+// @Param       path  query  string  true  "Relative file path"
 // @Success     200
 // @Failure     400  {object}  ErrorResponse
 // @Failure     404  {object}  ErrorResponse
-// @Router      /files/{filepath} [get]
+// @Router      /files [get]
 func (h *Handler) DownloadFile(c *gin.Context) {
-	path := c.Param("filepath")
-	// Strip leading slash added by Gin wildcard params.
-	if len(path) > 0 && path[0] == '/' {
-		path = path[1:]
+	path := c.Query("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "query parameter 'path' is required"})
+		return
 	}
 
 	hostPath, err := h.fileStore.HostPath(path)

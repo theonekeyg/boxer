@@ -28,7 +28,7 @@ func NewFileStore(root string) *FileStore {
 // Store saves the content of r into <root>/<path>. Parent directories are created
 // as needed. Returns an error if path is invalid (traversal or reserved prefix).
 func (s *FileStore) Store(path string, r io.Reader) error {
-	if err := s.validatePath(path); err != nil {
+	if err := s.validateWritePath(path); err != nil {
 		return err
 	}
 	abs := filepath.Join(s.root, path)
@@ -47,9 +47,9 @@ func (s *FileStore) Store(path string, r io.Reader) error {
 }
 
 // HostPath validates path and returns the absolute host path.
-// Returns an error on path traversal or reserved prefix.
+// Returns an error on path traversal. The output/ prefix is allowed for reads.
 func (s *FileStore) HostPath(path string) (string, error) {
-	if err := s.validatePath(path); err != nil {
+	if err := s.validateReadPath(path); err != nil {
 		return "", err
 	}
 	return filepath.Join(s.root, path), nil
@@ -57,7 +57,7 @@ func (s *FileStore) HostPath(path string) (string, error) {
 
 // Delete removes the file at <root>/<path>.
 func (s *FileStore) Delete(path string) error {
-	if err := s.validatePath(path); err != nil {
+	if err := s.validateWritePath(path); err != nil {
 		return err
 	}
 	return os.Remove(filepath.Join(s.root, path))
@@ -86,13 +86,22 @@ func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 	return nil
 }
 
-// validatePath checks that path does not escape the root and does not use the
-// reserved "output/" prefix. path is cleaned before validation.
-func (s *FileStore) validatePath(path string) error {
+// validateReadPath checks that path does not escape the root.
+func (s *FileStore) validateReadPath(path string) error {
 	clean := filepath.Clean(path)
 	if clean == "." || strings.HasPrefix(clean, "..") {
 		return fmt.Errorf("invalid path: %q", path)
 	}
+	return nil
+}
+
+// validateWritePath checks that path does not escape the root and does not use
+// the reserved "output/" prefix (which is managed by CaptureOutput, not uploads).
+func (s *FileStore) validateWritePath(path string) error {
+	if err := s.validateReadPath(path); err != nil {
+		return err
+	}
+	clean := filepath.Clean(path)
 	if clean == "output" || strings.HasPrefix(clean, "output/") || strings.HasPrefix(clean, "output"+string(filepath.Separator)) {
 		return fmt.Errorf("path uses reserved prefix 'output/': %q", path)
 	}

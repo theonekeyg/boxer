@@ -62,11 +62,27 @@ func TestFileStore_ReservedOutputPrefix_Rejected(t *testing.T) {
 	}
 	for _, p := range cases {
 		if err := fs.Store(p, strings.NewReader("x")); err == nil {
-			t.Errorf("expected error for reserved path %q", p)
+			t.Errorf("Store: expected error for reserved path %q", p)
 		}
-		if _, err := fs.HostPath(p); err == nil {
-			t.Errorf("HostPath: expected error for reserved path %q", p)
-		}
+	}
+}
+
+func TestFileStore_OutputPrefix_AllowedForRead(t *testing.T) {
+	fs := newTestFileStore(t)
+	// Simulate a captured output file written directly (bypassing Store).
+	if err := os.MkdirAll(fs.root+"/output/boxer-123", 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(fs.root+"/output/boxer-123/result.csv", []byte("1,2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	hostPath, err := fs.HostPath("output/boxer-123/result.csv")
+	if err != nil {
+		t.Errorf("HostPath should allow output/ prefix for reads: %v", err)
+	}
+	if hostPath == "" {
+		t.Error("expected non-empty host path")
 	}
 }
 

@@ -55,7 +55,7 @@ func main() {
 	r.GET("/healthz", handler.Health)
 	r.POST("/run", handler.Run)
 	r.POST("/files", handler.UploadFile)
-	r.GET("/files/*filepath", handler.DownloadFile)
+	r.GET("/files", handler.DownloadFile)
 	swaggerHandler := ginSwagger.WrapHandler(swaggerFiles.Handler)
 	serveSwaggerUI := func(c *gin.Context) {
 		c.Request.URL.Path = "/index.html"

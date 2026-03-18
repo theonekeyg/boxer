@@ -33,7 +33,7 @@ func newTestHandler(t *testing.T, cache ImageCacher, exec SandboxExecutor) *gin.
 	r.GET("/healthz", h.Health)
 	r.POST("/run", h.Run)
 	r.POST("/files", h.UploadFile)
-	r.GET("/files/*filepath", h.DownloadFile)
+	r.GET("/files", h.DownloadFile)
 	return r
 }
 
@@ -262,10 +262,10 @@ func TestDownloadFile_Success(t *testing.T) {
 
 	h := NewHandler(cfg, nil, nil, store)
 	r := gin.New()
-	r.GET("/files/*filepath", h.DownloadFile)
+	r.GET("/files", h.DownloadFile)
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/files/data/hello.txt", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/files?path=data/hello.txt", nil)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -279,10 +279,20 @@ func TestDownloadFile_Success(t *testing.T) {
 func TestDownloadFile_NotFound(t *testing.T) {
 	r := newTestHandler(t, nil, nil)
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/files/nonexistent.txt", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/files?path=nonexistent.txt", nil)
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusNotFound {
 		t.Errorf("expected 404, got %d", w.Code)
+	}
+}
+
+func TestDownloadFile_MissingPath(t *testing.T) {
+	r := newTestHandler(t, nil, nil)
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/files", nil)
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusBadRequest {
+		t.Errorf("expected 400, got %d", w.Code)
 	}
 }
 
