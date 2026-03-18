@@ -278,3 +278,34 @@ func TestBuild_MissingCmd(t *testing.T) {
 		t.Error("expected error for empty cmd")
 	}
 }
+
+func TestBuild_WithMounts_AppearsInSpec(t *testing.T) {
+	extra := []specs.Mount{
+		{Source: "/host/input.py", Destination: "/input.py", Type: "bind", Options: []string{"rbind", "ro"}},
+		{Source: "/host/output", Destination: "/output", Type: "bind", Options: []string{"rbind", "rw"}},
+	}
+	spec, err := baseBuilder().WithMounts(extra).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dests := map[string]specs.Mount{}
+	for _, m := range spec.Mounts {
+		dests[m.Destination] = m
+	}
+	for _, want := range extra {
+		got, ok := dests[want.Destination]
+		if !ok {
+			t.Errorf("expected mount at %s not found", want.Destination)
+			continue
+		}
+		if got.Source != want.Source {
+			t.Errorf("mount %s source: want %s, got %s", want.Destination, want.Source, got.Source)
+		}
+	}
+	// Standard mounts must still be present.
+	for _, required := range []string{"/proc", "/dev", "/sys", "/tmp"} {
+		if _, ok := dests[required]; !ok {
+			t.Errorf("standard mount %s missing after WithMounts", required)
+		}
+	}
+}

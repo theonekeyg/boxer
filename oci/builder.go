@@ -11,14 +11,15 @@ import (
 
 // SpecBuilder constructs a hardened OCI runtime spec.
 type SpecBuilder struct {
-	rootfsPath string
-	execID     string
-	cmd        []string
-	env        []string
-	cwd        string
-	limits     *config.ResourceLimits
-	getUID     func() int
-	getGID     func() int
+	rootfsPath  string
+	execID      string
+	cmd         []string
+	env         []string
+	cwd         string
+	limits      *config.ResourceLimits
+	extraMounts []specs.Mount
+	getUID      func() int
+	getGID      func() int
 }
 
 // NewSpecBuilder creates a SpecBuilder for the given rootfs path and execution ID.
@@ -60,6 +61,12 @@ func (b *SpecBuilder) WithCwd(cwd string) *SpecBuilder {
 
 func (b *SpecBuilder) WithLimits(limits config.ResourceLimits) *SpecBuilder {
 	b.limits = &limits
+	return b
+}
+
+// WithMounts appends extra bind mounts (e.g. input files, output dir) to the spec.
+func (b *SpecBuilder) WithMounts(mounts []specs.Mount) *SpecBuilder {
+	b.extraMounts = append(b.extraMounts, mounts...)
 	return b
 }
 
@@ -152,7 +159,7 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 			Path:     b.rootfsPath,
 			Readonly: readonly,
 		},
-		Mounts: standardMounts(),
+		Mounts: append(standardMounts(), b.extraMounts...),
 		Linux: &specs.Linux{
 			Namespaces:  namespaces,
 			UIDMappings: uidMappings,

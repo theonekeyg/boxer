@@ -101,6 +101,19 @@ func TestNewExecID_Unique(t *testing.T) {
 	}
 }
 
+func TestNewBundleDir_OutputDirCreated(t *testing.T) {
+	stateRoot := t.TempDir()
+	bundle, err := NewBundleDir(stateRoot, NewExecID(), minimalSpec())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer bundle.Cleanup()
+
+	if info, err := os.Stat(bundle.OutputDir()); err != nil || !info.IsDir() {
+		t.Error("output dir does not exist or is not a directory")
+	}
+}
+
 func TestBundleDir_RunscRootInsideExecRoot(t *testing.T) {
 	stateRoot := t.TempDir()
 	bundle, err := NewBundleDir(stateRoot, NewExecID(), minimalSpec())

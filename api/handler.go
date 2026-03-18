@@ -3,6 +3,8 @@ package api
 import (
 	"context"
 	"net/http"
+	"os"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -10,18 +12,21 @@ import (
 	"boxer/config"
 	"boxer/oci"
 	"boxer/sandbox"
+
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // Handler holds the dependencies injected into HTTP handlers.
 type Handler struct {
-	cfg      *config.BoxerConfig
-	cache    ImageCacher
-	executor SandboxExecutor
+	cfg       *config.BoxerConfig
+	cache     ImageCacher
+	executor  SandboxExecutor
+	fileStore *FileStore
 }
 
 // NewHandler constructs a Handler with all dependencies.
-func NewHandler(cfg *config.BoxerConfig, cache ImageCacher, executor SandboxExecutor) *Handler {
-	return &Handler{cfg: cfg, cache: cache, executor: executor}
+func NewHandler(cfg *config.BoxerConfig, cache ImageCacher, executor SandboxExecutor, fileStore *FileStore) *Handler {
+	return &Handler{cfg: cfg, cache: cache, executor: executor, fileStore: fileStore}
 }
 
 // Health godoc
@@ -33,6 +38,77 @@ func NewHandler(cfg *config.BoxerConfig, cache ImageCacher, executor SandboxExec
 // @Router      /healthz [get]
 func (h *Handler) Health(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// UploadFile godoc
+// @Summary     Upload a file to the file store
+// @Description Multipart upload; form fields: file (bytes) + path (relative path)
+// @Tags        files
+// @Accept      multipart/form-data
+// @Produce     json
+// @Param       file  formData  file    true  "File to upload"
+// @Param       path  formData  string  true  "Relative destination path (e.g. workspace/script.py)"
+// @Success     200   {object}  map[string]string
+// @Failure     400   {object}  ErrorResponse
+// @Failure     500   {object}  ErrorResponse
+// @Router      /files [post]
+func (h *Handler) UploadFile(c *gin.Context) {
+	path := c.PostForm("path")
+	if path == "" {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "form field 'path' is required"})
+		return
+	}
+
+	fh, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "form field 'file' is required: " + err.Error()})
+		return
+	}
+
+	f, err := fh.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "open upload: " + err.Error()})
+		return
+	}
+	defer f.Close()
+
+	if err := h.fileStore.Store(path, f); err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"path": path})
+}
+
+// DownloadFile godoc
+// @Summary     Download a file from the file store
+// @Description Download any file from the store by its relative path (including output/<exec_id>/...)
+// @Tags        files
+// @Produce     application/octet-stream
+// @Param       filepath  path  string  true  "Relative file path"
+// @Success     200
+// @Failure     400  {object}  ErrorResponse
+// @Failure     404  {object}  ErrorResponse
+// @Router      /files/{filepath} [get]
+func (h *Handler) DownloadFile(c *gin.Context) {
+	path := c.Param("filepath")
+	// Strip leading slash added by Gin wildcard params.
+	if len(path) > 0 && path[0] == '/' {
+		path = path[1:]
+	}
+
+	hostPath, err := h.fileStore.HostPath(path)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
+		return
+	}
+
+	if _, err := os.Stat(hostPath); os.IsNotExist(err) {
+		c.JSON(http.StatusNotFound, ErrorResponse{Error: "file not found"})
+		return
+	}
+
+	c.File(hostPath)
 }
 
 // Run godoc
@@ -70,12 +146,50 @@ func (h *Handler) Run(c *gin.Context) {
 		return
 	}
 
+	// Resolve and validate all requested input files before building the spec.
+	var extraMounts []specs.Mount
+	for _, filePath := range req.Files {
+		hostPath, err := h.fileStore.HostPath(filePath)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid file path: " + err.Error()})
+			return
+		}
+		if _, err := os.Stat(hostPath); os.IsNotExist(err) {
+			c.JSON(http.StatusBadRequest, ErrorResponse{Error: "file not found: " + filePath})
+			return
+		}
+		extraMounts = append(extraMounts, specs.Mount{
+			Source:      hostPath,
+			Destination: "/" + filePath,
+			Type:        "bind",
+			Options:     []string{"rbind", "ro"},
+		})
+	}
+
 	execID := sandbox.NewExecID()
+
+	// We need the bundle's output dir for the output mount; create the bundle
+	// directory structure first so we can get that path, then re-build the spec.
+	// Actually we build spec first, then create bundle. To avoid a chicken-and-egg
+	// situation with the output dir path, we derive it ourselves here.
+	outputHostPath := outputDirPath(h.cfg.StateRoot(), execID)
+	if err := os.MkdirAll(outputHostPath, 0o755); err != nil {
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "create output dir: " + err.Error()})
+		return
+	}
+	extraMounts = append(extraMounts, specs.Mount{
+		Source:      outputHostPath,
+		Destination: "/output",
+		Type:        "bind",
+		Options:     []string{"rbind", "rw"},
+	})
+
 	spec, err := oci.NewSpecBuilder(rootfs, execID).
 		WithCmd(req.Cmd).
 		WithEnv(req.Env).
 		WithCwd(req.Cwd).
 		WithLimits(limits).
+		WithMounts(extraMounts).
 		Build()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "spec build failed: " + err.Error()})
@@ -106,6 +220,20 @@ func (h *Handler) Run(c *gin.Context) {
 		return
 	}
 
+	// Capture files written to /output inside the container.
+	if captureErr := h.fileStore.CaptureOutput(execID, bundle.OutputDir()); captureErr != nil {
+		zerolog.Ctx(ctx).Warn().Err(captureErr).Str("exec_id", execID).Msg("failed to capture output files")
+	}
+
+	// Clean up input files unless the caller asked to keep them.
+	if !req.Persist {
+		for _, filePath := range req.Files {
+			if delErr := h.fileStore.Delete(filePath); delErr != nil {
+				zerolog.Ctx(ctx).Warn().Err(delErr).Str("path", filePath).Msg("failed to delete input file")
+			}
+		}
+	}
+
 	zerolog.Ctx(ctx).Info().
 		Str("exec_id", execID).
 		Str("image", req.Image).
@@ -114,9 +242,16 @@ func (h *Handler) Run(c *gin.Context) {
 		Msg("execution complete")
 
 	c.JSON(http.StatusOK, RunResponse{
+		ExecID:   execID,
 		ExitCode: result.ExitCode,
 		Stdout:   string(result.Stdout),
 		Stderr:   string(result.Stderr),
 		WallMs:   result.WallMs,
 	})
+}
+
+// outputDirPath returns the path that NewBundleDir will use for the output directory,
+// allowing the handler to pre-create it before building the OCI spec.
+func outputDirPath(stateRoot, execID string) string {
+	return filepath.Join(stateRoot, execID, "output")
 }

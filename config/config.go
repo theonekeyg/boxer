@@ -30,6 +30,9 @@ func (c *BoxerConfig) StateRoot() string { return filepath.Join(c.Home, "run") }
 // ImageStore is where unpacked image rootfs trees are cached.
 func (c *BoxerConfig) ImageStore() string { return filepath.Join(c.Home, "images") }
 
+// FilesRoot is where uploaded input files and captured output files are stored.
+func (c *BoxerConfig) FilesRoot() string { return filepath.Join(c.Home, "files") }
+
 // ConfigFile returns the path of the config file inside Home.
 func (c *BoxerConfig) ConfigFile() string { return filepath.Join(c.Home, "config.json") }
 

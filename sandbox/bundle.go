@@ -36,8 +36,9 @@ func NewBundleDir(stateRoot, execID string, spec *specs.Spec) (*BundleDir, error
 	execRoot := filepath.Join(stateRoot, execID)
 	bundlePath := filepath.Join(execRoot, "bundle")
 	runscState := filepath.Join(execRoot, "runsc-state")
+	outputDir := filepath.Join(execRoot, "output")
 
-	for _, dir := range []string{bundlePath, runscState} {
+	for _, dir := range []string{bundlePath, runscState, outputDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return nil, fmt.Errorf("create bundle dir: %w", err)
 		}
@@ -66,6 +67,9 @@ func (b *BundleDir) BundlePath() string { return b.bundlePath }
 
 // RunscRoot returns the per-execution runsc state directory.
 func (b *BundleDir) RunscRoot() string { return filepath.Join(b.execRoot, "runsc-state") }
+
+// OutputDir returns the per-execution directory that is bind-mounted to /output inside the container.
+func (b *BundleDir) OutputDir() string { return filepath.Join(b.execRoot, "output") }
 
 // Cleanup removes the entire execution root. Errors are logged, not returned.
 func (b *BundleDir) Cleanup() {

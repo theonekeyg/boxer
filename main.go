@@ -36,7 +36,7 @@ func main() {
 	}
 
 	// Ensure required directories exist.
-	for _, dir := range []string{cfg.Home, cfg.StateRoot(), cfg.ImageStore()} {
+	for _, dir := range []string{cfg.Home, cfg.StateRoot(), cfg.ImageStore(), cfg.FilesRoot()} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			log.Fatal().Err(err).Str("path", dir).Msg("failed to create directory")
 		}
@@ -44,14 +44,18 @@ func main() {
 
 	cache := image.NewImageCache(cfg.ImageStore())
 	executor := sandbox.NewExecutor(cfg)
-	handler := api.NewHandler(cfg, cache, executor)
+	fileStore := api.NewFileStore(cfg.FilesRoot())
+	handler := api.NewHandler(cfg, cache, executor, fileStore)
 
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(requestLogger())
+	r.MaxMultipartMemory = int64(cfg.OutputLimitBytes)
 
 	r.GET("/healthz", handler.Health)
 	r.POST("/run", handler.Run)
+	r.POST("/files", handler.UploadFile)
+	r.GET("/files/*filepath", handler.DownloadFile)
 	swaggerHandler := ginSwagger.WrapHandler(swaggerFiles.Handler)
 	serveSwaggerUI := func(c *gin.Context) {
 		c.Request.URL.Path = "/index.html"
