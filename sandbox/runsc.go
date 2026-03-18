@@ -112,11 +112,11 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 
 	// Check context for timeout.
 	if ctx.Err() == context.DeadlineExceeded {
-		killSandbox(e.cfg, bundle)
+		killSandbox(runscBin, bundle)
 		return nil, fmt.Errorf("%w after %dms", ErrTimeout, wallMs)
 	}
 	if waitErr != nil && ctx.Err() != nil {
-		killSandbox(e.cfg, bundle)
+		killSandbox(runscBin, bundle)
 		return nil, fmt.Errorf("%w after %dms", ErrTimeout, wallMs)
 	}
 
@@ -156,12 +156,7 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 }
 
 // killSandbox sends SIGKILL to a timed-out container (best-effort).
-func killSandbox(cfg *config.BoxerConfig, bundle *BundleDir) {
-	runscBin, err := cfg.RunscBin()
-	if err != nil {
-		log.Warn().Err(err).Str("exec_id", bundle.ExecID).Msg("runsc kill skipped: binary not found")
-		return
-	}
+func killSandbox(runscBin string, bundle *BundleDir) {
 	//nolint:gosec
 	cmd := exec.Command(runscBin,
 		"--root", bundle.RunscRoot(),
