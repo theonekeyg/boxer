@@ -41,10 +41,10 @@ func TestBuild_BasicSpec(t *testing.T) {
 }
 
 func TestBuild_RootlessUserNamespace(t *testing.T) {
-	if os.Getuid() == 0 {
-		t.Skip("rootless test only runs as non-root")
-	}
-	spec, err := baseBuilder().Build()
+	const fakeUID, fakeGID = 1000, 1001
+	spec, err := baseBuilder().
+		WithUIDProvider(func() int { return fakeUID }, func() int { return fakeGID }).
+		Build()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,11 +64,11 @@ func TestBuild_RootlessUserNamespace(t *testing.T) {
 	if len(spec.Linux.GIDMappings) != 1 {
 		t.Fatalf("expected 1 GIDMapping, got %d", len(spec.Linux.GIDMappings))
 	}
-	if spec.Linux.UIDMappings[0].HostID != uint32(os.Getuid()) {
-		t.Errorf("UID mapping host ID: expected %d, got %d", os.Getuid(), spec.Linux.UIDMappings[0].HostID)
+	if spec.Linux.UIDMappings[0].HostID != fakeUID {
+		t.Errorf("UID mapping host ID: expected %d, got %d", fakeUID, spec.Linux.UIDMappings[0].HostID)
 	}
-	if spec.Linux.GIDMappings[0].HostID != uint32(os.Getgid()) {
-		t.Errorf("GID mapping host ID: expected %d, got %d", os.Getgid(), spec.Linux.GIDMappings[0].HostID)
+	if spec.Linux.GIDMappings[0].HostID != fakeGID {
+		t.Errorf("GID mapping host ID: expected %d, got %d", fakeGID, spec.Linux.GIDMappings[0].HostID)
 	}
 }
 
