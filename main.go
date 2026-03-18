@@ -50,7 +50,7 @@ func main() {
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(requestLogger())
-	r.MaxMultipartMemory = int64(cfg.OutputLimitBytes)
+	r.MaxMultipartMemory = int64(cfg.UploadLimitBytes)
 
 	r.GET("/healthz", handler.Health)
 	r.POST("/run", handler.Run)

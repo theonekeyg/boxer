@@ -18,7 +18,8 @@ type BoxerConfig struct {
 
 	RunscPath        string         `json:"runsc_path"`
 	Platform         string         `json:"platform"`            // systrap|ptrace|kvm
-	OutputLimitBytes int            `json:"output_limit_bytes"`  // bytes, per stream
+	OutputLimitBytes int            `json:"output_limit_bytes"`  // bytes, per stream (sandbox stdout/stderr)
+	UploadLimitBytes int            `json:"upload_limit_bytes"`  // bytes, max multipart upload buffered in RAM
 	ListenAddr       string         `json:"listen_addr"`         // :8080
 	IgnoreCgroups    bool           `json:"ignore_cgroups"`      // skip cgroup setup (dev/rootless)
 	Defaults         ResourceLimits `json:"defaults"`
@@ -82,6 +83,7 @@ func defaultConfig() (BoxerConfig, error) {
 		Home:     home,
 		Platform: "systrap",
 		OutputLimitBytes: 10 * 1024 * 1024,
+		UploadLimitBytes: 10 * 1024 * 1024,
 		ListenAddr:       ":8080",
 		Defaults: ResourceLimits{
 			CPUCores:      &cpu,
