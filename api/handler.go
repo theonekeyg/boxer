@@ -243,7 +243,9 @@ func (h *Handler) Run(c *gin.Context) {
 
 	// Capture files written to /output inside the container.
 	if captureErr := h.fileStore.CaptureOutput(execID, bundle.OutputDir()); captureErr != nil {
-		zerolog.Ctx(ctx).Warn().Err(captureErr).Str("exec_id", execID).Msg("failed to capture output files")
+		zerolog.Ctx(ctx).Error().Err(captureErr).Str("exec_id", execID).Msg("failed to capture output files")
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "failed to capture output files: " + captureErr.Error()})
+		return
 	}
 
 	// Clean up input files unless the caller asked to keep them.
