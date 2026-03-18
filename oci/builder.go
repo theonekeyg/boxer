@@ -3,6 +3,7 @@ package oci
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 
@@ -77,6 +78,9 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	}
 	if len(b.cmd) == 0 {
 		return nil, fmt.Errorf("cmd not set")
+	}
+	if err := b.validateExtraMounts(); err != nil {
+		return nil, err
 	}
 
 	env := b.env
@@ -169,6 +173,31 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	}
 
 	return spec, nil
+}
+
+func (b *SpecBuilder) validateExtraMounts() error {
+	reserved := make(map[string]bool, len(standardMounts()))
+	for _, m := range standardMounts() {
+		reserved[m.Destination] = true
+	}
+
+	seen := make(map[string]bool, len(b.extraMounts))
+	for _, m := range b.extraMounts {
+		if m.Destination == "" {
+			return fmt.Errorf("mount has empty destination")
+		}
+		if !filepath.IsAbs(m.Destination) {
+			return fmt.Errorf("mount destination must be absolute: %q", m.Destination)
+		}
+		if reserved[m.Destination] {
+			return fmt.Errorf("mount destination conflicts with reserved mount: %q", m.Destination)
+		}
+		if seen[m.Destination] {
+			return fmt.Errorf("duplicate mount destination: %q", m.Destination)
+		}
+		seen[m.Destination] = true
+	}
+	return nil
 }
 
 func (b *SpecBuilder) buildResources() *specs.LinuxResources {

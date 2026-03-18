@@ -279,6 +279,45 @@ func TestBuild_MissingCmd(t *testing.T) {
 	}
 }
 
+func TestBuild_WithMounts_EmptyDestination_Rejected(t *testing.T) {
+	_, err := baseBuilder().WithMounts([]specs.Mount{
+		{Source: "/host/file", Destination: "", Type: "bind", Options: []string{"rbind", "ro"}},
+	}).Build()
+	if err == nil {
+		t.Error("expected error for empty destination")
+	}
+}
+
+func TestBuild_WithMounts_RelativeDestination_Rejected(t *testing.T) {
+	_, err := baseBuilder().WithMounts([]specs.Mount{
+		{Source: "/host/file", Destination: "relative/path", Type: "bind", Options: []string{"rbind", "ro"}},
+	}).Build()
+	if err == nil {
+		t.Error("expected error for relative destination")
+	}
+}
+
+func TestBuild_WithMounts_ReservedDestination_Rejected(t *testing.T) {
+	for _, dest := range []string{"/proc", "/dev", "/sys", "/tmp"} {
+		_, err := baseBuilder().WithMounts([]specs.Mount{
+			{Source: "/host/file", Destination: dest, Type: "bind", Options: []string{"rbind", "ro"}},
+		}).Build()
+		if err == nil {
+			t.Errorf("expected error for reserved destination %q", dest)
+		}
+	}
+}
+
+func TestBuild_WithMounts_DuplicateDestination_Rejected(t *testing.T) {
+	_, err := baseBuilder().WithMounts([]specs.Mount{
+		{Source: "/host/a", Destination: "/data", Type: "bind", Options: []string{"rbind", "ro"}},
+		{Source: "/host/b", Destination: "/data", Type: "bind", Options: []string{"rbind", "ro"}},
+	}).Build()
+	if err == nil {
+		t.Error("expected error for duplicate destination")
+	}
+}
+
 func TestBuild_WithMounts_AppearsInSpec(t *testing.T) {
 	extra := []specs.Mount{
 		{Source: "/host/input.py", Destination: "/input.py", Type: "bind", Options: []string{"rbind", "ro"}},
