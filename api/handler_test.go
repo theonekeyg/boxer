@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -394,7 +395,7 @@ func doUploadRequest(t *testing.T, r *gin.Engine, path, content string) *httptes
 
 // readBundleSpec parses the config.json from a bundle for test assertions.
 func readBundleSpec(b *sandbox.BundleDir) (*bundleSpecStub, error) {
-	configPath := b.BundlePath() + "/config.json"
+	configPath := filepath.Join(b.BundlePath(), "config.json")
 	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
