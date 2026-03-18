@@ -178,7 +178,7 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 func (b *SpecBuilder) validateExtraMounts() error {
 	reserved := make(map[string]bool, len(standardMounts()))
 	for _, m := range standardMounts() {
-		reserved[m.Destination] = true
+		reserved[filepath.Clean(m.Destination)] = true
 	}
 
 	seen := make(map[string]bool, len(b.extraMounts))
