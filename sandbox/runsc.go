@@ -42,6 +42,11 @@ var ErrOutputLimit = errors.New("output limit exceeded")
 // Run executes the OCI bundle in the given BundleDir inside a gVisor sandbox.
 // The caller should set a context deadline matching the wall-clock limit.
 func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.ResourceLimits) (*Result, error) {
+	runscBin, err := e.cfg.RunscBin()
+	if err != nil {
+		return nil, err
+	}
+
 	if err := os.MkdirAll(bundle.RunscRoot(), 0o755); err != nil {
 		return nil, fmt.Errorf("create runsc state dir: %w", err)
 	}
@@ -60,7 +65,7 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 	args = append(args, "run", "--bundle", bundle.BundlePath(), bundle.ExecID)
 
 	//nolint:gosec // the path comes from trusted config
-	cmd := exec.CommandContext(ctx, e.cfg.RunscPath, args...)
+	cmd := exec.CommandContext(ctx, runscBin, args...)
 
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
@@ -152,8 +157,13 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 
 // killSandbox sends SIGKILL to a timed-out container (best-effort).
 func killSandbox(cfg *config.BoxerConfig, bundle *BundleDir) {
+	runscBin, err := cfg.RunscBin()
+	if err != nil {
+		log.Warn().Err(err).Str("exec_id", bundle.ExecID).Msg("runsc kill skipped: binary not found")
+		return
+	}
 	//nolint:gosec
-	cmd := exec.Command(cfg.RunscPath,
+	cmd := exec.Command(runscBin,
 		"--root", bundle.RunscRoot(),
 		"kill", bundle.ExecID, "SIGKILL",
 	)
