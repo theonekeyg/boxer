@@ -18,7 +18,8 @@ type BoxerConfig struct {
 
 	RunscPath        string         `json:"runsc_path"`
 	Platform         string         `json:"platform"`            // systrap|ptrace|kvm
-	OutputLimitBytes int            `json:"output_limit_bytes"`  // bytes, per stream
+	OutputLimitBytes int            `json:"output_limit_bytes"`  // bytes, per stream (sandbox stdout/stderr)
+	UploadLimitBytes int            `json:"upload_limit_bytes"`  // bytes, max multipart upload buffered in RAM
 	ListenAddr       string         `json:"listen_addr"`         // :8080
 	IgnoreCgroups    bool           `json:"ignore_cgroups"`      // skip cgroup setup (dev/rootless)
 	Defaults         ResourceLimits `json:"defaults"`
@@ -29,6 +30,9 @@ func (c *BoxerConfig) StateRoot() string { return filepath.Join(c.Home, "run") }
 
 // ImageStore is where unpacked image rootfs trees are cached.
 func (c *BoxerConfig) ImageStore() string { return filepath.Join(c.Home, "images") }
+
+// FilesRoot is where uploaded input files and captured output files are stored.
+func (c *BoxerConfig) FilesRoot() string { return filepath.Join(c.Home, "files") }
 
 // ConfigFile returns the path of the config file inside Home.
 func (c *BoxerConfig) ConfigFile() string { return filepath.Join(c.Home, "config.json") }
@@ -79,6 +83,7 @@ func defaultConfig() (BoxerConfig, error) {
 		Home:     home,
 		Platform: "systrap",
 		OutputLimitBytes: 10 * 1024 * 1024,
+		UploadLimitBytes: 10 * 1024 * 1024,
 		ListenAddr:       ":8080",
 		Defaults: ResourceLimits{
 			CPUCores:      &cpu,

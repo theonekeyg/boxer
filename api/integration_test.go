@@ -32,9 +32,13 @@ func TestIntegration_RunPython(t *testing.T) {
 		t.Fatalf("load config: %v", err)
 	}
 
+	if err := os.MkdirAll(cfg.FilesRoot(), 0o755); err != nil {
+		t.Fatalf("create files root: %v", err)
+	}
 	cache := image.NewImageCache(cfg.ImageStore())
 	executor := sandbox.NewExecutor(cfg)
-	handler := NewHandler(cfg, cache, executor)
+	fileStore := NewFileStore(cfg.FilesRoot())
+	handler := NewHandler(cfg, cache, executor, fileStore)
 
 	r := gin.New()
 	r.POST("/run", handler.Run)

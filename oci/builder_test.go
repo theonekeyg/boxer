@@ -278,3 +278,87 @@ func TestBuild_MissingCmd(t *testing.T) {
 		t.Error("expected error for empty cmd")
 	}
 }
+
+func TestBuild_WithMounts_EmptyDestination_Rejected(t *testing.T) {
+	_, err := baseBuilder().WithMounts([]specs.Mount{
+		{Source: "/host/file", Destination: "", Type: "bind", Options: []string{"rbind", "ro"}},
+	}).Build()
+	if err == nil {
+		t.Error("expected error for empty destination")
+	}
+}
+
+func TestBuild_WithMounts_RelativeDestination_Rejected(t *testing.T) {
+	_, err := baseBuilder().WithMounts([]specs.Mount{
+		{Source: "/host/file", Destination: "relative/path", Type: "bind", Options: []string{"rbind", "ro"}},
+	}).Build()
+	if err == nil {
+		t.Error("expected error for relative destination")
+	}
+}
+
+func TestBuild_WithMounts_ReservedDestination_Rejected(t *testing.T) {
+	for _, dest := range []string{"/proc", "/dev", "/sys", "/tmp", "/proc/", "/proc/../proc"} {
+		_, err := baseBuilder().WithMounts([]specs.Mount{
+			{Source: "/host/file", Destination: dest, Type: "bind", Options: []string{"rbind", "ro"}},
+		}).Build()
+		if err == nil {
+			t.Errorf("expected error for reserved destination %q", dest)
+		}
+	}
+}
+
+func TestBuild_WithMounts_DuplicateDestination_Rejected(t *testing.T) {
+	_, err := baseBuilder().WithMounts([]specs.Mount{
+		{Source: "/host/a", Destination: "/data", Type: "bind", Options: []string{"rbind", "ro"}},
+		{Source: "/host/b", Destination: "/data", Type: "bind", Options: []string{"rbind", "ro"}},
+	}).Build()
+	if err == nil {
+		t.Error("expected error for duplicate destination")
+	}
+}
+
+func TestBuild_WithMounts_DestinationNormalized(t *testing.T) {
+	spec, err := baseBuilder().WithMounts([]specs.Mount{
+		{Source: "/host/file", Destination: "/data//subdir/", Type: "bind", Options: []string{"rbind", "ro"}},
+	}).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, m := range spec.Mounts {
+		if m.Source == "/host/file" && m.Destination != "/data/subdir" {
+			t.Errorf("expected cleaned destination /data/subdir, got %q", m.Destination)
+		}
+	}
+}
+
+func TestBuild_WithMounts_AppearsInSpec(t *testing.T) {
+	extra := []specs.Mount{
+		{Source: "/host/input.py", Destination: "/input.py", Type: "bind", Options: []string{"rbind", "ro"}},
+		{Source: "/host/output", Destination: "/output", Type: "bind", Options: []string{"rbind", "rw"}},
+	}
+	spec, err := baseBuilder().WithMounts(extra).Build()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dests := map[string]specs.Mount{}
+	for _, m := range spec.Mounts {
+		dests[m.Destination] = m
+	}
+	for _, want := range extra {
+		got, ok := dests[want.Destination]
+		if !ok {
+			t.Errorf("expected mount at %s not found", want.Destination)
+			continue
+		}
+		if got.Source != want.Source {
+			t.Errorf("mount %s source: want %s, got %s", want.Destination, want.Source, got.Source)
+		}
+	}
+	// Standard mounts must still be present.
+	for _, required := range []string{"/proc", "/dev", "/sys", "/tmp"} {
+		if _, ok := dests[required]; !ok {
+			t.Errorf("standard mount %s missing after WithMounts", required)
+		}
+	}
+}

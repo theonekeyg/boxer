@@ -3,6 +3,7 @@ package oci
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 
@@ -11,14 +12,15 @@ import (
 
 // SpecBuilder constructs a hardened OCI runtime spec.
 type SpecBuilder struct {
-	rootfsPath string
-	execID     string
-	cmd        []string
-	env        []string
-	cwd        string
-	limits     *config.ResourceLimits
-	getUID     func() int
-	getGID     func() int
+	rootfsPath  string
+	execID      string
+	cmd         []string
+	env         []string
+	cwd         string
+	limits      *config.ResourceLimits
+	extraMounts []specs.Mount
+	getUID      func() int
+	getGID      func() int
 }
 
 // NewSpecBuilder creates a SpecBuilder for the given rootfs path and execution ID.
@@ -63,6 +65,12 @@ func (b *SpecBuilder) WithLimits(limits config.ResourceLimits) *SpecBuilder {
 	return b
 }
 
+// WithMounts appends extra bind mounts (e.g. input files, output dir) to the spec.
+func (b *SpecBuilder) WithMounts(mounts []specs.Mount) *SpecBuilder {
+	b.extraMounts = append(b.extraMounts, mounts...)
+	return b
+}
+
 // Build produces a complete, hardened OCI spec.
 func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	if b.rootfsPath == "" {
@@ -70,6 +78,9 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	}
 	if len(b.cmd) == 0 {
 		return nil, fmt.Errorf("cmd not set")
+	}
+	if err := b.validateExtraMounts(); err != nil {
+		return nil, err
 	}
 
 	env := b.env
@@ -152,7 +163,7 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 			Path:     b.rootfsPath,
 			Readonly: readonly,
 		},
-		Mounts: standardMounts(),
+		Mounts: append(standardMounts(), b.extraMounts...),
 		Linux: &specs.Linux{
 			Namespaces:  namespaces,
 			UIDMappings: uidMappings,
@@ -162,6 +173,33 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	}
 
 	return spec, nil
+}
+
+func (b *SpecBuilder) validateExtraMounts() error {
+	reserved := make(map[string]bool, len(standardMounts()))
+	for _, m := range standardMounts() {
+		reserved[filepath.Clean(m.Destination)] = true
+	}
+
+	seen := make(map[string]bool, len(b.extraMounts))
+	for i := range b.extraMounts {
+		if b.extraMounts[i].Destination == "" {
+			return fmt.Errorf("mount has empty destination")
+		}
+		if !filepath.IsAbs(b.extraMounts[i].Destination) {
+			return fmt.Errorf("mount destination must be absolute: %q", b.extraMounts[i].Destination)
+		}
+		clean := filepath.Clean(b.extraMounts[i].Destination)
+		if reserved[clean] {
+			return fmt.Errorf("mount destination conflicts with reserved mount: %q", clean)
+		}
+		if seen[clean] {
+			return fmt.Errorf("duplicate mount destination: %q", clean)
+		}
+		seen[clean] = true
+		b.extraMounts[i].Destination = clean
+	}
+	return nil
 }
 
 func (b *SpecBuilder) buildResources() *specs.LinuxResources {
