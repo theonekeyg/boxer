@@ -185,6 +185,16 @@ func (h *Handler) Run(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "create output dir: " + err.Error()})
 		return
 	}
+	// Guard against the execRoot being orphaned if Build or NewBundleDir fails.
+	// Disarmed once bundle.Cleanup() takes ownership of the directory tree.
+	execRoot := filepath.Dir(outputHostPath)
+	bundleReady := false
+	defer func() {
+		if !bundleReady {
+			os.RemoveAll(execRoot)
+		}
+	}()
+
 	extraMounts = append(extraMounts, specs.Mount{
 		Source:      outputHostPath,
 		Destination: "/output",
@@ -209,6 +219,7 @@ func (h *Handler) Run(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "bundle setup failed: " + err.Error()})
 		return
 	}
+	bundleReady = true
 	defer bundle.Cleanup()
 
 	var runCtx context.Context
