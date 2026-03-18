@@ -26,7 +26,7 @@ func TestIntegration_RunPython(t *testing.T) {
 		t.Fatalf("config file not found at %s; set BOXER_CONFIG to run integration tests", cfgPath)
 	}
 
-	_ = os.Setenv("BOXER_CONFIG", cfgPath)
+	t.Setenv("BOXER_CONFIG", cfgPath)
 	cfg, err := config.Load()
 	if err != nil {
 		t.Fatalf("load config: %v", err)
@@ -39,13 +39,19 @@ func TestIntegration_RunPython(t *testing.T) {
 	r := gin.New()
 	r.POST("/run", handler.Run)
 
-	body, _ := json.Marshal(RunRequest{
+	body, err := json.Marshal(RunRequest{
 		Image: "python:3.12-slim",
 		Cmd:   []string{"python3", "-c", "print('hello')"},
 	})
+	if err != nil {
+		t.Fatalf("marshal request: %v", err)
+	}
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/run", bytes.NewReader(body))
+	req, err := http.NewRequest(http.MethodPost, "/run", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("new request: %v", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
