@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import shutil
+import textwrap
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -104,8 +105,8 @@ async def evaluate_problem(
             _write_problem_dir(problem_dir, completion="", code="", stdout="", stderr=str(exc), result_data=result_data)
             return {**result_data, "stdout": "", "stderr": str(exc)}
 
-        # Build test harness — indent completion to sit inside the function body
-        indented = "\n".join("    " + line if line.strip() else line for line in completion.splitlines())
+        # Build test harness — normalize completion indentation then re-indent into function body
+        indented = textwrap.indent(textwrap.dedent(completion.strip()), "    ")
         code = f"{problem['prompt']}{indented}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
 
         # Execute in boxer
