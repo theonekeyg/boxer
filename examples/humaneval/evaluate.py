@@ -79,19 +79,31 @@ async def evaluate_problem(
     boxer_url: str,
     model: str,
     problem: dict,
+    # counter is a single-element list rather than a plain int because Python
+    # integers are immutable — rebinding a local variable wouldn't be visible
+    # to the caller. A list is a mutable object shared by reference, so
+    # counter[0] += 1 is visible across all coroutines.
     counter: list,
     counter_lock: asyncio.Lock,
     total: int,
     output_dir: Path,
 ) -> dict:
+    """Evaluate a single HumanEval problem end-to-end:
+      1. Call the LLM to generate a function body completion.
+      2. Assemble the full test harness (prompt + completion + tests + check call).
+      3. Upload the file to the boxer server and run it inside a sandbox container.
+      4. Write all artifacts (code, completion, stdout/stderr, result) to output_dir.
+    Returns a result dict with task_id, passed, exit_code, wall_ms, stdout, stderr.
+    """
     task_id = problem["task_id"].replace("/", "_")
     label = problem["task_id"]
     problem_dir = output_dir / "problems" / task_id
 
+    # sem limits the number of problems evaluated concurrently.
     async with sem:
         t0 = time.monotonic()
 
-        # Generate completion
+        # Step 1: ask the LLM to complete the function body.
         try:
             completion = await generate_completion(model, problem["prompt"])
         except Exception as exc:
@@ -110,8 +122,12 @@ async def evaluate_problem(
             _write_problem_dir(problem_dir, completion="", code="", stdout="", stderr=str(exc), result_data=result_data)
             return {**result_data, "stdout": "", "stderr": str(exc)}
 
-        # Normalize completion indentation so the assembled code is valid Python,
-        # then let black format the whole file uniformly.
+        # Step 2: assemble the test harness.
+        # textwrap.dedent normalizes whatever indentation the model used (models
+        # are inconsistent), then re-indents with exactly 4 spaces so the
+        # completion sits correctly inside the function body. black then
+        # formats the whole file uniformly; if it can't parse (rare), we fall
+        # back to the textwrap-normalized version.
         indented = textwrap.indent(textwrap.dedent(completion).strip(), "    ")
         code = f"{problem['prompt']}{indented}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
         try:
@@ -119,7 +135,9 @@ async def evaluate_problem(
         except black.InvalidInput:
             pass
 
-        # Execute in boxer
+        # Step 3: upload to boxer and execute inside a sandboxed container.
+        # boxer runs the code in an isolated python:3.12-slim container with
+        # resource limits; a zero exit code means all assertions passed.
         try:
             result = await run_in_boxer(http, boxer_url, task_id, code)
         except httpx.HTTPStatusError as exc:
@@ -160,6 +178,8 @@ async def evaluate_problem(
         stdout = result.get("stdout", "")
         stderr = result.get("stderr", "")
 
+        # Step 4: log completion in arrival order (counter increments as each
+        # task finishes, not in submission order).
         async with counter_lock:
             counter[0] += 1
             n = counter[0]
