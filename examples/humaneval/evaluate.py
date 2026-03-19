@@ -9,9 +9,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx
+import litellm
 from datasets import load_dataset
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
 
 load_dotenv()
 
@@ -22,8 +22,8 @@ SYSTEM_PROMPT = (
 )
 
 
-async def generate_completion(client: AsyncOpenAI, model: str, prompt: str) -> str:
-    response = await client.chat.completions.create(
+async def generate_completion(model: str, prompt: str) -> str:
+    response = await litellm.acompletion(
         model=model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -73,7 +73,6 @@ def _write_problem_dir(problem_dir: Path, *, completion: str, code: str, stdout:
 
 async def evaluate_problem(
     sem: asyncio.Semaphore,
-    openai_client: AsyncOpenAI,
     http: httpx.AsyncClient,
     boxer_url: str,
     model: str,
@@ -91,9 +90,7 @@ async def evaluate_problem(
 
         # Generate completion
         try:
-            completion = await generate_completion(
-                openai_client, model, problem["prompt"]
-            )
+            completion = await generate_completion(model, problem["prompt"])
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             print(f"[{index:3d}/{total}] {label:<20} FAIL  (openai error: {exc})")
@@ -107,8 +104,9 @@ async def evaluate_problem(
             _write_problem_dir(problem_dir, completion="", code="", stdout="", stderr=str(exc), result_data=result_data)
             return {**result_data, "stdout": "", "stderr": str(exc)}
 
-        # Build test harness
-        code = f"{problem['prompt']}{completion}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
+        # Build test harness — indent completion to sit inside the function body
+        indented = "\n".join("    " + line if line.strip() else line for line in completion.splitlines())
+        code = f"{problem['prompt']}{indented}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
 
         # Execute in boxer
         try:
@@ -180,13 +178,12 @@ async def main() -> None:
     total = len(problems)
     print(f"Evaluating {total} problem(s) with model={args.model}, workers={args.workers}\n")
 
-    openai_client = AsyncOpenAI()
     sem = asyncio.Semaphore(args.workers)
 
     async with httpx.AsyncClient(timeout=120.0) as http:
         tasks = [
             evaluate_problem(
-                sem, openai_client, http, args.boxer_url, args.model,
+                sem, http, args.boxer_url, args.model,
                 problem, i + 1, total, output_dir,
             )
             for i, problem in enumerate(problems)
