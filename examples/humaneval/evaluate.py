@@ -79,7 +79,8 @@ async def evaluate_problem(
     boxer_url: str,
     model: str,
     problem: dict,
-    index: int,
+    counter: list,
+    counter_lock: asyncio.Lock,
     total: int,
     output_dir: Path,
 ) -> dict:
@@ -95,7 +96,10 @@ async def evaluate_problem(
             completion = await generate_completion(model, problem["prompt"])
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
-            print(f"[{index:3d}/{total}] {label:<20} FAIL  (openai error: {exc})")
+            async with counter_lock:
+                counter[0] += 1
+                n = counter[0]
+            print(f"[{n:3d}/{total}] {label:<20} FAIL  (openai error: {exc})")
             result_data = {
                 "task_id": label,
                 "passed": False,
@@ -121,7 +125,10 @@ async def evaluate_problem(
         except httpx.HTTPStatusError as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             note = "timeout" if exc.response.status_code == 408 else str(exc)
-            print(f"[{index:3d}/{total}] {label:<20} FAIL  (boxer error: {note})")
+            async with counter_lock:
+                counter[0] += 1
+                n = counter[0]
+            print(f"[{n:3d}/{total}] {label:<20} FAIL  (boxer error: {note})")
             result_data = {
                 "task_id": label,
                 "passed": False,
@@ -133,7 +140,10 @@ async def evaluate_problem(
             return {**result_data, "stdout": "", "stderr": note}
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
-            print(f"[{index:3d}/{total}] {label:<20} FAIL  (boxer error: {exc})")
+            async with counter_lock:
+                counter[0] += 1
+                n = counter[0]
+            print(f"[{n:3d}/{total}] {label:<20} FAIL  (boxer error: {exc})")
             result_data = {
                 "task_id": label,
                 "passed": False,
@@ -150,8 +160,11 @@ async def evaluate_problem(
         stdout = result.get("stdout", "")
         stderr = result.get("stderr", "")
 
+        async with counter_lock:
+            counter[0] += 1
+            n = counter[0]
         status = "PASS" if passed else f"FAIL  exit={exit_code}"
-        print(f"[{index:3d}/{total}] {label:<20} {status}  {elapsed_ms}ms")
+        print(f"[{n:3d}/{total}] {label:<20} {status}  {elapsed_ms}ms")
 
         result_data = {
             "task_id": label,
@@ -186,14 +199,16 @@ async def main() -> None:
     print(f"Evaluating {total} problem(s) with model={args.model}, workers={args.workers}\n")
 
     sem = asyncio.Semaphore(args.workers)
+    counter = [0]
+    counter_lock = asyncio.Lock()
 
     async with httpx.AsyncClient(timeout=120.0) as http:
         tasks = [
             evaluate_problem(
                 sem, http, args.boxer_url, args.model,
-                problem, i + 1, total, output_dir,
+                problem, counter, counter_lock, total, output_dir,
             )
-            for i, problem in enumerate(problems)
+            for problem in problems
         ]
         results = await asyncio.gather(*tasks)
 
