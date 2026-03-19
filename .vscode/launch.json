@@ -6,8 +6,8 @@
       "type": "go",
       "request": "launch",
       "mode": "auto",
-      "program": "${workspaceFolder}",
-      "args": ["--config", "${workspaceFolder}/config.dev.json"],
+      "program": "${workspaceFolder}/packages/core",
+      "args": ["--config", "${workspaceFolder}/packages/core/config.dev.json"],
       "env": {},
       "cwd": "${workspaceFolder}"
     }
