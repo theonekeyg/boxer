@@ -8,7 +8,7 @@ keeping untrusted LLM output completely isolated. Reports a pass@1 score.
 
 - [uv](https://docs.astral.sh/uv/) installed
 - Boxer server running locally
-- `OPENAI_API_KEY` set in your environment
+- `OPENAI_API_KEY` set in your environment (or via `.env`)
 
 ## Setup
 
@@ -16,8 +16,9 @@ keeping untrusted LLM output completely isolated. Reports a pass@1 score.
 # Start boxer (from the repo root)
 cd packages/core && go run . --config config.dev.json
 
-# In a separate terminal, install dependencies
+# In a separate terminal, set up credentials and install dependencies
 cd examples/humaneval
+cp .env.example .env        # then fill in your OPENAI_API_KEY
 uv sync
 ```
 

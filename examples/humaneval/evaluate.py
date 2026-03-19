@@ -8,7 +8,10 @@ import time
 
 import httpx
 from datasets import load_dataset
+from dotenv import load_dotenv
 from openai import AsyncOpenAI
+
+load_dotenv()
 
 
 SYSTEM_PROMPT = (
