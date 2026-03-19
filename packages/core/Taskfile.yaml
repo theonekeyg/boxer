@@ -48,6 +48,16 @@ tasks:
     cmds:
       - go generate ./...
 
+  lint:
+    desc: "Run golangci-lint (check only)"
+    cmds:
+      - go tool golangci-lint run ./...
+
+  lint-fix:
+    desc: "Run golangci-lint and auto-fix fixable issues"
+    cmds:
+      - go tool golangci-lint run --fix ./...
+
   swagger:
     desc: "Regenerate Swagger docs from source annotations"
     cmds:

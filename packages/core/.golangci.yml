@@ -1,0 +1,56 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - gosec
+    - govet
+    - ineffassign
+    - staticcheck
+    - bodyclose
+    - contextcheck
+    - exhaustive
+    - funlen
+    - gocritic
+    - gocyclo
+    - misspell
+    - nilerr
+    - prealloc
+    - revive
+    - unparam
+    - wrapcheck
+
+  settings:
+    gocyclo:
+      min-complexity: 15
+    funlen:
+      lines: 80
+      statements: 60
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+    wrapcheck:
+      ignore-package-globs:
+        - "boxer/*"
+    gosec:
+      excludes: []
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck
+        - wrapcheck
+        - funlen
+        - gocyclo
+        - gocritic
+        - unparam
+    - path: api/mocks/
+      linters:
+        - all
+    - path: docs/
+      linters:
+        - all
