@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import shutil
+import textwrap
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -105,8 +106,10 @@ async def evaluate_problem(
             _write_problem_dir(problem_dir, completion="", code="", stdout="", stderr=str(exc), result_data=result_data)
             return {**result_data, "stdout": "", "stderr": str(exc)}
 
-        # Build test harness and auto-format
-        code = f"{problem['prompt']}{completion}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
+        # Normalize completion indentation so the assembled code is valid Python,
+        # then let black format the whole file uniformly.
+        indented = textwrap.indent(textwrap.dedent(completion).strip(), "    ")
+        code = f"{problem['prompt']}{indented}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
         try:
             code = black.format_str(code, mode=black.Mode())
         except black.InvalidInput:
