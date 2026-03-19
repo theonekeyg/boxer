@@ -32,7 +32,7 @@ OPENAI_API_KEY=sk-... uv run python evaluate.py --max-problems 3
 
 Expected output:
 
-```
+```text
 Loading HumanEval dataset…
 Evaluating 3 problem(s) with model=o3-mini, workers=8
 
@@ -52,7 +52,7 @@ OPENAI_API_KEY=sk-... uv run python evaluate.py
 
 Artifacts are written to `examples/humaneval/results/` (wiped and recreated on each run):
 
-```
+```text
 results/
 ├── summary.json          ← aggregate: pass@1, total, passed, run metadata
 └── problems/
