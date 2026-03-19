@@ -147,6 +147,11 @@ func (c *ImageCache) cachedResolveDigest(ctx context.Context, imageRef string) (
 
 	digest, err := c.resolveDigest(ctx, imageRef)
 	if err != nil {
+		// Evict the entry so callers that arrive after this failure create a
+		// fresh digestEntry rather than serialising on this one indefinitely.
+		// Callers already queued on entry.mu will still retry when they acquire
+		// the lock (they see digest == "" and call resolveDigest again).
+		c.digestMu.Delete(imageRef)
 		return "", err
 	}
 	entry.digest = digest
