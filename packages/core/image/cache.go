@@ -20,12 +20,19 @@ const readySentinel = ".ready"
 type ImageCache struct {
 	storeRoot string
 	mu        sync.Map // key: digest string → *cacheEntry
+	digestMu  sync.Map // key: imageRef string → *digestEntry
 }
 
 type cacheEntry struct {
 	mu    sync.Mutex
 	ready bool
 	err   error
+}
+
+type digestEntry struct {
+	mu     sync.Mutex
+	digest string
+	err    error
 }
 
 // NewImageCache returns a cache rooted at storeRoot.
@@ -36,7 +43,7 @@ func NewImageCache(storeRoot string) *ImageCache {
 // Rootfs returns the path to the merged rootfs for imageRef, pulling and
 // unpacking the image if necessary.
 func (c *ImageCache) Rootfs(ctx context.Context, imageRef string) (string, error) {
-	digest, err := c.resolveDigest(ctx, imageRef)
+	digest, err := c.cachedResolveDigest(ctx, imageRef)
 	if err != nil {
 		return "", fmt.Errorf("resolve digest for %s: %w", imageRef, err)
 	}
@@ -123,6 +130,27 @@ func (c *ImageCache) fetchLayers(ctx context.Context, imageRef string) ([]io.Rea
 		return nil, fmt.Errorf("pull %s: registry and daemon both failed: %w", imageRef, err)
 	}
 	return layers, nil
+}
+
+// cachedResolveDigest resolves the digest for imageRef, caching the result so
+// that only one registry request is made per unique image reference.
+func (c *ImageCache) cachedResolveDigest(ctx context.Context, imageRef string) (string, error) {
+	actual, _ := c.digestMu.LoadOrStore(imageRef, &digestEntry{})
+	entry := actual.(*digestEntry)
+
+	entry.mu.Lock()
+	defer entry.mu.Unlock()
+
+	if entry.digest != "" {
+		return entry.digest, nil
+	}
+
+	digest, err := c.resolveDigest(ctx, imageRef)
+	if err != nil {
+		return "", err
+	}
+	entry.digest = digest
+	return digest, nil
 }
 
 // resolveDigest returns a stable, filesystem-safe key for the image content.
