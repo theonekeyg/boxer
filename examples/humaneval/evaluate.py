@@ -64,6 +64,38 @@ async def run_in_boxer(
     return run_resp.json()
 
 
+def _normalize_completion(completion: str) -> str:
+    """Re-indent a model completion to sit inside a function body (4 spaces).
+
+    Models inconsistently indent the first line of their output — sometimes it
+    matches the rest, sometimes it is flush-left while subsequent lines carry
+    their own relative indentation. textwrap.dedent uses the *minimum* indent
+    across all lines, so a flush-left first line causes it to strip nothing and
+    the subsequent indent() call doubles every other line.
+
+    Fix: compute the common base indent from lines 1+ only (they are reliable),
+    strip that many spaces from every line (clamping to 0 for the first line if
+    it has less), then re-indent the whole thing with 4 spaces.
+    """
+    lines = completion.splitlines()
+    if not lines:
+        return ""
+
+    rest = [l for l in lines[1:] if l.strip()]
+    base = min((len(l) - len(l.lstrip()) for l in rest), default=0)
+
+    normalized = []
+    for line in lines:
+        if not line.strip():
+            normalized.append("")
+        elif len(line) - len(line.lstrip()) >= base:
+            normalized.append(line[base:])
+        else:
+            normalized.append(line.lstrip())  # first line with less indent than base
+
+    return textwrap.indent("\n".join(normalized).strip(), "    ")
+
+
 def _write_problem_dir(problem_dir: Path, *, completion: str, code: str, stdout: str, stderr: str, result_data: dict) -> None:
     problem_dir.mkdir(parents=True, exist_ok=True)
     (problem_dir / "completion.txt").write_text(completion)
@@ -123,12 +155,9 @@ async def evaluate_problem(
             return {**result_data, "stdout": "", "stderr": str(exc)}
 
         # Step 2: assemble the test harness.
-        # textwrap.dedent normalizes whatever indentation the model used (models
-        # are inconsistent), then re-indents with exactly 4 spaces so the
-        # completion sits correctly inside the function body. black then
-        # formats the whole file uniformly; if it can't parse (rare), we fall
-        # back to the textwrap-normalized version.
-        indented = textwrap.indent(textwrap.dedent(completion).strip(), "    ")
+        # black formats the whole file uniformly; if it can't parse (rare), we
+        # fall back to the textwrap-normalized version.
+        indented = _normalize_completion(completion)
         code = f"{problem['prompt']}{indented}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
         try:
             code = black.format_str(code, mode=black.Mode())
