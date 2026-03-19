@@ -47,10 +47,23 @@ pass@1:  3/3  (100.0%)
 ### Full evaluation
 
 ```bash
-OPENAI_API_KEY=sk-... uv run python evaluate.py --output results.json
+OPENAI_API_KEY=sk-... uv run python evaluate.py
 ```
 
-`results.json` contains the pass@1 score and per-problem details (exit code, stdout/stderr, wall time).
+Artifacts are written to `examples/humaneval/results/` (wiped and recreated on each run):
+
+```
+results/
+├── summary.json          ← aggregate: pass@1, total, passed, run metadata
+└── problems/
+    ├── HumanEval_0/
+    │   ├── code.py       ← full test harness (prompt + completion + tests + check)
+    │   ├── completion.txt ← raw LLM output
+    │   ├── stdout.txt    ← captured stdout from sandbox
+    │   ├── stderr.txt    ← captured stderr from sandbox
+    │   └── result.json   ← {task_id, passed, exit_code, wall_ms, error?}
+    └── ...
+```
 
 ## Options
 
@@ -60,7 +73,6 @@ OPENAI_API_KEY=sk-... uv run python evaluate.py --output results.json
 | `--model` | `o3-mini` | OpenAI model ID |
 | `--max-problems` | *(all 164)* | Limit number of problems |
 | `--workers` | `8` | Concurrent async tasks |
-| `--output` | *(stdout only)* | Path to save JSON results |
 
 ## How it works
 

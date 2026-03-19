@@ -3,8 +3,10 @@
 import argparse
 import asyncio
 import json
-import sys
+import shutil
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 from datasets import load_dataset
@@ -60,6 +62,15 @@ async def run_in_boxer(
     return run_resp.json()
 
 
+def _write_problem_dir(problem_dir: Path, *, completion: str, code: str, stdout: str, stderr: str, result_data: dict) -> None:
+    problem_dir.mkdir(parents=True, exist_ok=True)
+    (problem_dir / "completion.txt").write_text(completion)
+    (problem_dir / "code.py").write_text(code)
+    (problem_dir / "stdout.txt").write_text(stdout)
+    (problem_dir / "stderr.txt").write_text(stderr)
+    (problem_dir / "result.json").write_text(json.dumps(result_data, indent=2))
+
+
 async def evaluate_problem(
     sem: asyncio.Semaphore,
     openai_client: AsyncOpenAI,
@@ -69,9 +80,11 @@ async def evaluate_problem(
     problem: dict,
     index: int,
     total: int,
+    output_dir: Path,
 ) -> dict:
     task_id = problem["task_id"].replace("/", "_")
     label = problem["task_id"]
+    problem_dir = output_dir / "problems" / task_id
 
     async with sem:
         t0 = time.monotonic()
@@ -84,15 +97,15 @@ async def evaluate_problem(
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             print(f"[{index:3d}/{total}] {label:<20} FAIL  (openai error: {exc})")
-            return {
+            result_data = {
                 "task_id": label,
                 "passed": False,
                 "exit_code": None,
-                "stdout": "",
-                "stderr": str(exc),
                 "wall_ms": elapsed_ms,
                 "error": f"openai: {exc}",
             }
+            _write_problem_dir(problem_dir, completion="", code="", stdout="", stderr=str(exc), result_data=result_data)
+            return {**result_data, "stdout": "", "stderr": str(exc)}
 
         # Build test harness
         code = f"{problem['prompt']}{completion}\n\n{problem['test']}\n\ncheck({problem['entry_point']})\n"
@@ -104,43 +117,46 @@ async def evaluate_problem(
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             note = "timeout" if exc.response.status_code == 408 else str(exc)
             print(f"[{index:3d}/{total}] {label:<20} FAIL  (boxer error: {note})")
-            return {
+            result_data = {
                 "task_id": label,
                 "passed": False,
                 "exit_code": None,
-                "stdout": "",
-                "stderr": note,
                 "wall_ms": elapsed_ms,
                 "error": f"boxer: {note}",
             }
+            _write_problem_dir(problem_dir, completion=completion, code=code, stdout="", stderr=note, result_data=result_data)
+            return {**result_data, "stdout": "", "stderr": note}
         except Exception as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
             print(f"[{index:3d}/{total}] {label:<20} FAIL  (boxer error: {exc})")
-            return {
+            result_data = {
                 "task_id": label,
                 "passed": False,
                 "exit_code": None,
-                "stdout": "",
-                "stderr": str(exc),
                 "wall_ms": elapsed_ms,
                 "error": f"boxer: {exc}",
             }
+            _write_problem_dir(problem_dir, completion=completion, code=code, stdout="", stderr=str(exc), result_data=result_data)
+            return {**result_data, "stdout": "", "stderr": str(exc)}
 
         elapsed_ms = int((time.monotonic() - t0) * 1000)
         exit_code = result.get("exit_code", -1)
         passed = exit_code == 0
+        stdout = result.get("stdout", "")
+        stderr = result.get("stderr", "")
 
         status = "PASS" if passed else f"FAIL  exit={exit_code}"
         print(f"[{index:3d}/{total}] {label:<20} {status}  {elapsed_ms}ms")
 
-        return {
+        result_data = {
             "task_id": label,
             "passed": passed,
             "exit_code": exit_code,
-            "stdout": result.get("stdout", ""),
-            "stderr": result.get("stderr", ""),
             "wall_ms": elapsed_ms,
         }
+        _write_problem_dir(problem_dir, completion=completion, code=code, stdout=stdout, stderr=stderr, result_data=result_data)
+
+        return {**result_data, "stdout": stdout, "stderr": stderr}
 
 
 async def main() -> None:
@@ -149,8 +165,11 @@ async def main() -> None:
     parser.add_argument("--model", default="o3-mini", help="OpenAI model ID")
     parser.add_argument("--max-problems", type=int, default=None, help="Limit number of problems")
     parser.add_argument("--workers", type=int, default=8, help="Concurrent async tasks")
-    parser.add_argument("--output", default=None, help="Optional path to save JSON results")
     args = parser.parse_args()
+
+    output_dir = Path(__file__).parent / "results"
+    shutil.rmtree(output_dir, ignore_errors=True)
+    (output_dir / "problems").mkdir(parents=True)
 
     print("Loading HumanEval dataset…")
     dataset = load_dataset("openai_humaneval", split="test")
@@ -168,7 +187,7 @@ async def main() -> None:
         tasks = [
             evaluate_problem(
                 sem, openai_client, http, args.boxer_url, args.model,
-                problem, i + 1, total,
+                problem, i + 1, total, output_dir,
             )
             for i, problem in enumerate(problems)
         ]
@@ -181,14 +200,15 @@ async def main() -> None:
     print("─" * 40)
     print(f"pass@1:  {passed_count}/{total}  ({pct:.1f}%)")
 
-    if args.output:
-        with open(args.output, "w") as f:
-            json.dump(
-                {"pass_at_1": pct / 100, "passed": passed_count, "total": total, "results": results},
-                f,
-                indent=2,
-            )
-        print(f"Results saved to {args.output}")
+    summary = {
+        "model": args.model,
+        "pass_at_1": pct / 100,
+        "passed": passed_count,
+        "total": total,
+        "run_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+    }
+    (output_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    print(f"Results saved to {output_dir}/")
 
 
 if __name__ == "__main__":
