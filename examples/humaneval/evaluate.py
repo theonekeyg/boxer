@@ -234,6 +234,11 @@ async def main() -> None:
     parser.add_argument("--workers", type=int, default=8, help="Concurrent async tasks")
     args = parser.parse_args()
 
+    if args.workers < 1:
+        parser.error("--workers must be at least 1")
+    if args.max_problems is not None and args.max_problems < 1:
+        parser.error("--max-problems must be at least 1")
+
     output_dir = Path(__file__).parent / "results"
     shutil.rmtree(output_dir, ignore_errors=True)
     (output_dir / "problems").mkdir(parents=True)
