@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import IO, List, Optional, Union
+from typing import IO
 
 import httpx
 
@@ -26,11 +26,11 @@ def _raise_for_status(response: httpx.Response) -> None:
 
 def _build_run_body(
     image: str,
-    cmd: List[str],
-    env: List[str],
+    cmd: list[str],
+    env: list[str],
     cwd: str,
-    limits: Optional[ResourceLimits],
-    files: List[str],
+    limits: ResourceLimits | None,
+    files: list[str],
     persist: bool,
 ) -> dict:
     body: dict = {"image": image, "cmd": cmd}
@@ -70,7 +70,7 @@ class BoxerClient:
             timeout=timeout,
         )
 
-    def __enter__(self) -> "BoxerClient":
+    def __enter__(self) -> BoxerClient:
         self._client.__enter__()
         return self
 
@@ -92,12 +92,12 @@ class BoxerClient:
     def run(
         self,
         image: str,
-        cmd: List[str],
+        cmd: list[str],
         *,
-        env: Optional[List[str]] = None,
+        env: list[str] | None = None,
         cwd: str = "/",
-        limits: Optional[ResourceLimits] = None,
-        files: Optional[List[str]] = None,
+        limits: ResourceLimits | None = None,
+        files: list[str] | None = None,
         persist: bool = False,
     ) -> RunResult:
         """Execute a command inside a sandboxed container."""
@@ -117,11 +117,11 @@ class BoxerClient:
     def upload_file(
         self,
         remote_path: str,
-        content: Union[bytes, IO[bytes]],
+        content: bytes | IO[bytes],
     ) -> None:
         """Upload a file to the Boxer file store."""
         if isinstance(content, bytes):
-            file_obj: Union[bytes, IO[bytes]] = content
+            file_obj: bytes | IO[bytes] = content
         else:
             file_obj = content
         response = self._client.post(
@@ -133,9 +133,9 @@ class BoxerClient:
 
     def upload_path(
         self,
-        local_path: Union[str, Path],
-        remote_path: Optional[str] = None,
-    ) -> List[str]:
+        local_path: str | Path,
+        remote_path: str | None = None,
+    ) -> list[str]:
         """Upload a local file or directory to the Boxer file store.
 
         If *local_path* is a directory, all files inside it are uploaded
@@ -168,4 +168,3 @@ class BoxerClient:
         response = self._client.get("/files", params={"path": path})
         _raise_for_status(response)
         return response.content
-

@@ -1,13 +1,13 @@
 """Async integration tests — require a live Boxer server at BOXER_URL."""
+
 from __future__ import annotations
 
 from pathlib import Path
 
 import pytest
+from conftest import needs_server
 
 from boxer import AsyncBoxerClient, BoxerTimeoutError, ResourceLimits
-
-from conftest import needs_server
 
 IMAGE = "python:3.12-slim"
 
@@ -55,7 +55,10 @@ async def test_upload_and_run_with_file(client: AsyncBoxerClient) -> None:
 async def test_upload_run_and_download_output(
     client: AsyncBoxerClient, tmp_path: Path
 ) -> None:
-    script = b"import os; os.makedirs('/output', exist_ok=True); open('/output/result.txt', 'w').write('hello async output')\n"
+    script = (
+        b"import os; os.makedirs('/output', exist_ok=True); "
+        b"open('/output/result.txt', 'w').write('hello async output')\n"
+    )
     remote = "write_output_async.py"
     await client.upload_file(remote, script)
     result = await client.run(
@@ -70,7 +73,9 @@ async def test_upload_run_and_download_output(
 
 
 @needs_server
-async def test_upload_path_single_file(client: AsyncBoxerClient, tmp_path: Path) -> None:
+async def test_upload_path_single_file(
+    client: AsyncBoxerClient, tmp_path: Path
+) -> None:
     f = tmp_path / "hello.txt"
     f.write_text("hello from upload_path")
 
@@ -97,9 +102,13 @@ async def test_upload_path_directory(client: AsyncBoxerClient, tmp_path: Path) -
 
     result = await client.run(
         image=IMAGE,
-        cmd=["python3", "-c",
-             "import os; "
-             "print(os.path.exists('/mydir/a.txt') and os.path.exists('/mydir/sub/b.txt'))"],
+        cmd=[
+            "python3",
+            "-c",
+            "import os; "
+            "print(os.path.exists('/mydir/a.txt')"
+            " and os.path.exists('/mydir/sub/b.txt'))",
+        ],
         files=paths,
     )
     assert result.exit_code == 0

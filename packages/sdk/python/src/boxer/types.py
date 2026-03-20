@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 
 @dataclass
 class ResourceLimits:
-    cpu_cores: Optional[float] = None
-    memory_mb: Optional[int] = None
-    pids_limit: Optional[int] = None
-    wall_clock_secs: Optional[int] = None
-    nofile: Optional[int] = None
+    cpu_cores: float | None = None
+    memory_mb: int | None = None
+    pids_limit: int | None = None
+    wall_clock_secs: int | None = None
+    nofile: int | None = None
 
     def to_dict(self) -> dict:
         result = {}
