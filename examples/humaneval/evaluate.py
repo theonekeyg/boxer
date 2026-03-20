@@ -10,8 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import black
-import httpx
 import litellm
+from boxer import AsyncBoxerClient, BoxerAPIError, BoxerTimeoutError, ResourceLimits, RunResult
 from datasets import load_dataset
 from dotenv import load_dotenv
 
@@ -36,45 +36,30 @@ async def generate_completion(model: str, prompt: str) -> str:
 
 
 async def run_in_boxer(
-    http: httpx.AsyncClient,
-    boxer_url: str,
+    client: AsyncBoxerClient,
     task_id: str,
     code: str,
-) -> dict:
+) -> RunResult:
     """Upload code to boxer and execute it inside an isolated sandbox container.
 
     The file is uploaded first via POST /files, then executed via POST /run.
     boxer mounts the uploaded file read-only inside the container at /<filename>
     and removes it from the file store after the run completes (persist=False is
     the default).
-
-    Returns the raw JSON response from POST /run, which includes exit_code,
-    stdout, stderr, and wall_ms.
     """
     # Step 1: upload the generated test script to boxer's file store.
     filename = f"run/{task_id}.py"
-    code_bytes = code.encode()
-    upload_resp = await http.post(
-        f"{boxer_url}/files",
-        files={"file": (filename, code_bytes, "text/x-python")},
-        data={"path": filename},
-    )
-    upload_resp.raise_for_status()
+    await client.upload_file(filename, code.encode())
 
     # Step 2: run the script inside a sandboxed python:3.12-slim container.
     # boxer mounts the file at /<filename> and passes it to python3.
     # wall_clock_secs caps total execution time; memory_mb limits RAM.
-    run_resp = await http.post(
-        f"{boxer_url}/run",
-        json={
-            "image": "python:3.12-slim",
-            "cmd": ["python3", f"/{filename}"],
-            "files": [filename],
-            "limits": {"wall_clock_secs": 30, "memory_mb": 256},
-        },
+    return await client.run(
+        image="python:3.12-slim",
+        cmd=["python3", f"/{filename}"],
+        files=[filename],
+        limits=ResourceLimits(wall_clock_secs=30, memory_mb=256),
     )
-    run_resp.raise_for_status()
-    return run_resp.json()
 
 
 def _normalize_completion(completion: str) -> str:
@@ -120,8 +105,7 @@ def _write_problem_dir(problem_dir: Path, *, completion: str, code: str, stdout:
 
 async def evaluate_problem(
     sem: asyncio.Semaphore,
-    http: httpx.AsyncClient,
-    boxer_url: str,
+    client: AsyncBoxerClient,
     model: str,
     problem: dict,
     # counter is a single-element list rather than a plain int because Python
@@ -181,10 +165,25 @@ async def evaluate_problem(
         # boxer runs the code in an isolated python:3.12-slim container with
         # resource limits; a zero exit code means all assertions passed.
         try:
-            result = await run_in_boxer(http, boxer_url, task_id, code)
-        except httpx.HTTPStatusError as exc:
+            result = await run_in_boxer(client, task_id, code)
+        except BoxerTimeoutError as exc:
             elapsed_ms = int((time.monotonic() - t0) * 1000)
-            note = "timeout" if exc.response.status_code == 408 else str(exc)
+            async with counter_lock:
+                counter[0] += 1
+                n = counter[0]
+            print(f"[{n:3d}/{total}] {label:<20} FAIL  (boxer error: timeout)")
+            result_data = {
+                "task_id": label,
+                "passed": False,
+                "exit_code": None,
+                "wall_ms": elapsed_ms,
+                "error": "boxer: timeout",
+            }
+            _write_problem_dir(problem_dir, completion=completion, code=code, stdout="", stderr=str(exc), result_data=result_data)
+            return {**result_data, "stdout": "", "stderr": str(exc)}
+        except BoxerAPIError as exc:
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+            note = str(exc)
             async with counter_lock:
                 counter[0] += 1
                 n = counter[0]
@@ -215,10 +214,10 @@ async def evaluate_problem(
             return {**result_data, "stdout": "", "stderr": str(exc)}
 
         elapsed_ms = int((time.monotonic() - t0) * 1000)
-        exit_code = result.get("exit_code", -1)
+        exit_code = result.exit_code
         passed = exit_code == 0
-        stdout = result.get("stdout", "")
-        stderr = result.get("stderr", "")
+        stdout = result.stdout
+        stderr = result.stderr
 
         # Step 4: log completion in arrival order (counter increments as each
         # task finishes, not in submission order).
@@ -269,10 +268,10 @@ async def main() -> None:
     counter = [0]
     counter_lock = asyncio.Lock()
 
-    async with httpx.AsyncClient(timeout=120.0) as http:
+    async with AsyncBoxerClient(base_url=args.boxer_url) as client:
         tasks = [
             evaluate_problem(
-                sem, http, args.boxer_url, args.model,
+                sem, client, args.model,
                 problem, counter, counter_lock, total, output_dir,
             )
             for problem in problems

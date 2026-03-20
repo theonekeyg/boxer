@@ -1,0 +1,14 @@
+version: "3"
+
+tasks:
+  lint:
+    desc: Run ruff linter and formatter check
+    cmds:
+      - ruff check .
+      - ruff format --check .
+
+  test:
+    desc: Run integration tests against a live Boxer server
+    cmd: pytest tests/ -v
+    env:
+      BOXER_URL: '{{.BOXER_URL | default "http://localhost:8080"}}'
