@@ -41,13 +41,13 @@ var ErrOutputLimit = errors.New("output limit exceeded")
 
 // Run executes the OCI bundle in the given BundleDir inside a gVisor sandbox.
 // The caller should set a context deadline matching the wall-clock limit.
-func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.ResourceLimits) (*Result, error) {
+func (e *Executor) Run(ctx context.Context, bundle *BundleDir, _ config.ResourceLimits) (*Result, error) { //nolint:gocyclo,funlen // Run handles all execution and error-recovery paths of the sandbox lifecycle
 	runscBin, err := e.cfg.RunscBin()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := os.MkdirAll(bundle.RunscRoot(), 0o755); err != nil {
+	if err := os.MkdirAll(bundle.RunscRoot(), 0o755); err != nil { //nolint:gosec // 0o755 required for runsc state directory
 		return nil, fmt.Errorf("create runsc state dir: %w", err)
 	}
 
@@ -107,8 +107,8 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 	stderrRes := <-stderrCh
 
 	// Drain any residual data in pipes after Wait (pipe goroutines have finished).
-	io.Copy(io.Discard, stdoutPipe) //nolint:errcheck
-	io.Copy(io.Discard, stderrPipe) //nolint:errcheck
+	io.Copy(io.Discard, stdoutPipe) //nolint:errcheck,gosec // pipes already consumed; drain is best-effort
+	io.Copy(io.Discard, stderrPipe) //nolint:errcheck,gosec // pipes already consumed; drain is best-effort
 
 	// Check context for timeout.
 	if ctx.Err() == context.DeadlineExceeded {
@@ -157,7 +157,7 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, limits config.Res
 
 // killSandbox sends SIGKILL to a timed-out container (best-effort).
 func killSandbox(runscBin string, bundle *BundleDir) {
-	//nolint:gosec
+	//nolint:gosec // path comes from trusted config, validated at startup
 	cmd := exec.Command(runscBin,
 		"--root", bundle.RunscRoot(),
 		"kill", bundle.ExecID, "SIGKILL",

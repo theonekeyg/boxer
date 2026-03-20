@@ -140,7 +140,7 @@ func TestSanitizeKey(t *testing.T) {
 // TestUnpackLayers_Integration verifies that UnpackLayers works end-to-end
 // with actual tar streams (no network).
 func TestUnpackLayers_Integration(t *testing.T) {
-	import_archive_tar := func() []io.ReadCloser {
+	importArchiveTar := func() []io.ReadCloser {
 		return []io.ReadCloser{
 			makeTar([]tarEntry{
 				{name: "bin/", typeflag: tar.TypeDir},
@@ -149,7 +149,7 @@ func TestUnpackLayers_Integration(t *testing.T) {
 		}
 	}
 	dest := t.TempDir()
-	if err := UnpackLayers(import_archive_tar(), dest); err != nil {
+	if err := UnpackLayers(importArchiveTar(), dest); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(dest, "bin/sh")); err != nil {

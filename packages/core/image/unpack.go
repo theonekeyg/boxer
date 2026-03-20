@@ -21,7 +21,7 @@ func UnpackLayers(layers []io.ReadCloser, destDir string) error {
 }
 
 // unpackLayer applies a single layer tar to destDir.
-func unpackLayer(rc io.Reader, destDir string) error {
+func unpackLayer(rc io.Reader, destDir string) error { //nolint:gocyclo,funlen // unpackLayer handles all OCI tar entry types and whiteout semantics
 	tr := tar.NewReader(rc)
 	for {
 		hdr, err := tr.Next()
@@ -50,7 +50,7 @@ func unpackLayer(rc io.Reader, destDir string) error {
 			entries, readErr := os.ReadDir(parent)
 			if readErr == nil {
 				for _, e := range entries {
-					os.RemoveAll(filepath.Join(parent, e.Name())) //nolint:errcheck
+					os.RemoveAll(filepath.Join(parent, e.Name())) //nolint:errcheck,gosec // whiteout removal is best-effort
 				}
 			}
 			continue
@@ -59,7 +59,7 @@ func unpackLayer(rc io.Reader, destDir string) error {
 		// File whiteout: delete the named file/dir.
 		if suffix, ok := strings.CutPrefix(base, ".wh."); ok {
 			target := filepath.Join(destDir, dir, suffix)
-			os.RemoveAll(target) //nolint:errcheck
+			os.RemoveAll(target) //nolint:errcheck,gosec // whiteout removal is best-effort
 			continue
 		}
 
@@ -72,24 +72,27 @@ func unpackLayer(rc io.Reader, destDir string) error {
 			}
 
 		case tar.TypeReg:
-			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil { //nolint:gosec // 0o755 required for rootfs parent directories
 				return fmt.Errorf("mkdir parent %s: %w", filepath.Dir(dest), err)
 			}
-			f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, hdr.FileInfo().Mode())
+			f, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, hdr.FileInfo().Mode()) //nolint:gosec // path validated by safeJoin above
 			if err != nil {
 				return fmt.Errorf("create file %s: %w", dest, err)
 			}
-			_, copyErr := io.Copy(f, tr)
-			f.Close()
+			_, copyErr := io.Copy(f, tr) //nolint:gosec // decompression size bounded by available disk; container images can be large
+			closeErr := f.Close()
 			if copyErr != nil {
 				return fmt.Errorf("write file %s: %w", dest, copyErr)
 			}
+			if closeErr != nil {
+				return fmt.Errorf("close file %s: %w", dest, closeErr)
+			}
 
 		case tar.TypeSymlink:
-			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
-				return err
+			if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil { //nolint:gosec // 0o755 required for rootfs parent directories
+				return fmt.Errorf("mkdir symlink parent %s: %w", filepath.Dir(dest), err)
 			}
-			os.Remove(dest) //nolint:errcheck
+			os.Remove(dest) //nolint:errcheck,gosec // pre-existing file removal is best-effort
 			if err := os.Symlink(hdr.Linkname, dest); err != nil {
 				return fmt.Errorf("symlink %s → %s: %w", dest, hdr.Linkname, err)
 			}
@@ -99,7 +102,7 @@ func unpackLayer(rc io.Reader, destDir string) error {
 			if err := safeJoin(destDir, hdr.Linkname); err != nil {
 				return err
 			}
-			os.Remove(dest) //nolint:errcheck
+			os.Remove(dest) //nolint:errcheck,gosec // pre-existing file removal is best-effort
 			if err := os.Link(linkTarget, dest); err != nil {
 				return fmt.Errorf("hardlink %s → %s: %w", dest, linkTarget, err)
 			}

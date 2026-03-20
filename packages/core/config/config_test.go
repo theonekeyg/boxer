@@ -123,7 +123,7 @@ func TestLoad_FromFile(t *testing.T) {
 		"platform": "kvm",
 		"listen_addr": ":9090"
 	}`
-	if err := os.WriteFile(cfgFile, []byte(data), 0644); err != nil {
+	if err := os.WriteFile(cfgFile, []byte(data), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("BOXER_CONFIG", cfgFile)
@@ -179,7 +179,7 @@ func TestRunscBin_ExplicitPath(t *testing.T) {
 func TestRunscBin_InPath(t *testing.T) {
 	dir := t.TempDir()
 	runscPath := filepath.Join(dir, "runsc")
-	if err := os.WriteFile(runscPath, []byte("#!/bin/sh\n"), 0o755); err != nil {
+	if err := os.WriteFile(runscPath, []byte("#!/bin/sh\n"), 0o755); err != nil { //nolint:gosec // fake runsc script needs execute permission
 		t.Fatalf("write fake runsc: %v", err)
 	}
 	t.Setenv("PATH", dir)

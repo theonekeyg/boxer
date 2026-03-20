@@ -1,3 +1,4 @@
+// Package config loads and validates the boxer service configuration.
 package config
 
 import (
@@ -117,15 +118,15 @@ func Load() (*BoxerConfig, error) {
 		path = cfg.ConfigFile()
 	}
 
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) //nolint:gosec // path from trusted config (CLI flag, env var, or default)
 	if os.IsNotExist(err) {
 		return &cfg, nil
 	}
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read config %s: %w", path, err)
 	}
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse config: %w", err)
 	}
 	return &cfg, nil
 }

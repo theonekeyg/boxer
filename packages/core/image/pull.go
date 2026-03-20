@@ -29,7 +29,7 @@ func pullFromRegistry(ctx context.Context, imageRef string) ([]io.ReadCloser, er
 		rc, err := layer.Uncompressed()
 		if err != nil {
 			for _, r := range readers {
-				r.Close()
+				r.Close() //nolint:errcheck,gosec // cleanup on error path
 			}
 			return nil, fmt.Errorf("get uncompressed layer: %w", err)
 		}

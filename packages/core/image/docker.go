@@ -19,13 +19,13 @@ func pullFromDaemon(ctx context.Context, imageRef string) ([]io.ReadCloser, erro
 	if err != nil {
 		return nil, fmt.Errorf("docker client: %w", err)
 	}
-	defer cli.Close()
+	defer cli.Close() //nolint:errcheck // docker client close on cleanup path
 
 	rc, err := cli.ImageSave(ctx, []string{imageRef})
 	if err != nil {
 		return nil, fmt.Errorf("docker image save: %w", err)
 	}
-	defer rc.Close()
+	defer rc.Close() //nolint:errcheck // stream already fully read before this point
 
 	data, err := io.ReadAll(rc)
 	if err != nil {
@@ -39,9 +39,9 @@ func pullFromDaemon(ctx context.Context, imageRef string) ([]io.ReadCloser, erro
 func daemonDigest(ctx context.Context, imageRef string) (string, error) {
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("docker client: %w", err)
 	}
-	defer cli.Close()
+	defer cli.Close() //nolint:errcheck // docker client close on cleanup path
 
 	inspect, err := cli.ImageInspect(ctx, imageRef)
 	if err != nil {
@@ -74,7 +74,10 @@ func extractDockerLayers(archiveData []byte) ([]io.ReadCloser, error) {
 		if err := readFileFromTar(archiveData, layerPath, func(r io.Reader) error {
 			var err error
 			buf, err = io.ReadAll(r)
-			return err
+			if err != nil {
+				return fmt.Errorf("read: %w", err)
+			}
+			return nil
 		}); err != nil {
 			return nil, fmt.Errorf("read layer %s: %w", layerPath, err)
 		}
@@ -92,7 +95,7 @@ func readFileFromTar(data []byte, name string, fn func(io.Reader) error) error {
 			return fmt.Errorf("file %q not found in tar", name)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("read tar: %w", err)
 		}
 		if hdr.Name == name {
 			return fn(tr)

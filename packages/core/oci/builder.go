@@ -1,3 +1,4 @@
+// Package oci constructs hardened OCI runtime specs for gVisor sandboxes.
 package oci
 
 import (
@@ -43,16 +44,19 @@ func (b *SpecBuilder) WithUIDProvider(getUID, getGID func() int) *SpecBuilder {
 	return b
 }
 
+// WithCmd sets the command and arguments to run inside the container.
 func (b *SpecBuilder) WithCmd(cmd []string) *SpecBuilder {
 	b.cmd = cmd
 	return b
 }
 
+// WithEnv sets additional environment variables for the container process.
 func (b *SpecBuilder) WithEnv(env []string) *SpecBuilder {
 	b.env = env
 	return b
 }
 
+// WithCwd sets the working directory for the container process.
 func (b *SpecBuilder) WithCwd(cwd string) *SpecBuilder {
 	if cwd != "" {
 		b.cwd = cwd
@@ -60,6 +64,7 @@ func (b *SpecBuilder) WithCwd(cwd string) *SpecBuilder {
 	return b
 }
 
+// WithLimits applies resource limits (CPU, memory, pids, wall clock, nofile) to the spec.
 func (b *SpecBuilder) WithLimits(limits config.ResourceLimits) *SpecBuilder {
 	b.limits = &limits
 	return b
@@ -72,6 +77,8 @@ func (b *SpecBuilder) WithMounts(mounts []specs.Mount) *SpecBuilder {
 }
 
 // Build produces a complete, hardened OCI spec.
+//
+//nolint:funlen // Build constructs a complete OCI spec with many required fields; splitting would obscure the structure
 func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	if b.rootfsPath == "" {
 		return nil, fmt.Errorf("rootfs path not set")
@@ -139,8 +146,8 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 	var uidMappings, gidMappings []specs.LinuxIDMapping
 	if rootless {
 		namespaces = append(namespaces, specs.LinuxNamespace{Type: specs.UserNamespace})
-		hostUID := uint32(b.getUID())
-		hostGID := uint32(b.getGID())
+		hostUID := uint32(b.getUID()) //nolint:gosec // UIDs on Linux fit in uint32
+		hostGID := uint32(b.getGID()) //nolint:gosec // GIDs on Linux fit in uint32
 		uidMappings = []specs.LinuxIDMapping{{ContainerID: 0, HostID: hostUID, Size: 1}}
 		gidMappings = []specs.LinuxIDMapping{{ContainerID: 0, HostID: hostGID, Size: 1}}
 	}

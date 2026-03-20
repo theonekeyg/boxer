@@ -1,3 +1,4 @@
+// Package ioutil provides internal I/O utilities.
 package ioutil
 
 import "io"
@@ -32,7 +33,7 @@ func ReadLimited(r io.Reader, limit int) ([]byte, error) {
 			break
 		}
 		if err != nil {
-			return buf, err
+			return buf, err //nolint:wrapcheck // error from io.Reader interface; wrapping adds no useful context here
 		}
 	}
 	return buf, nil
