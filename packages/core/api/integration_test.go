@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"testing"
 
@@ -55,7 +56,9 @@ func doIntegrationUpload(t *testing.T, r *gin.Engine, path string, content []byt
 	t.Helper()
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
-	mw.WriteField("path", path) //nolint:errcheck
+	if err := mw.WriteField("path", path); err != nil {
+		t.Fatalf("write path field: %v", err)
+	}
 	fw, err := mw.CreateFormFile("file", "upload")
 	if err != nil {
 		t.Fatalf("create form file: %v", err)
@@ -63,10 +66,15 @@ func doIntegrationUpload(t *testing.T, r *gin.Engine, path string, content []byt
 	if _, err := fw.Write(content); err != nil {
 		t.Fatalf("write form file: %v", err)
 	}
-	mw.Close() //nolint:errcheck
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/files", &buf)
+	if err := mw.Close(); err != nil {
+		t.Fatalf("close multipart writer: %v", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, "/files", &buf)
+	if err != nil {
+		t.Fatalf("new upload request: %v", err)
+	}
 	req.Header.Set("Content-Type", mw.FormDataContentType())
+	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("upload %s: expected 200, got %d: %s", path, w.Code, w.Body.String())
@@ -119,15 +127,21 @@ func TestIntegration_UploadRunAndDownloadOutput(t *testing.T) {
 	doIntegrationUpload(t, r, "write_output.py", script)
 
 	// Run the script with persist=true so the output directory is not purged.
-	body, _ := json.Marshal(RunRequest{
+	body, err := json.Marshal(RunRequest{
 		Image:   "python:3.12-slim",
 		Cmd:     []string{"python3", "/write_output.py"},
 		Files:   []string{"write_output.py"},
 		Persist: true,
 	})
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodPost, "/run", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("marshal run request: %v", err)
+	}
+	req, err := http.NewRequest(http.MethodPost, "/run", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("new run request: %v", err)
+	}
 	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	if w.Code != http.StatusOK {
 		t.Fatalf("run: expected 200, got %d: %s", w.Code, w.Body.String())
@@ -142,14 +156,20 @@ func TestIntegration_UploadRunAndDownloadOutput(t *testing.T) {
 
 	// Download the captured output file. This succeeds because Persist: true
 	// prevents the handler from calling fileStore.PurgeOutput after the run.
-	outputPath := fmt.Sprintf("output/%s/result.txt", resp.ExecID)
+	params := url.Values{"path": []string{fmt.Sprintf("output/%s/result.txt", resp.ExecID)}}
+	dreq, err := http.NewRequest(http.MethodGet, "/files?"+params.Encode(), http.NoBody)
+	if err != nil {
+		t.Fatalf("new download request: %v", err)
+	}
 	dw := httptest.NewRecorder()
-	dreq, _ := http.NewRequest(http.MethodGet, "/files?path="+outputPath, http.NoBody)
 	r.ServeHTTP(dw, dreq)
 	if dw.Code != http.StatusOK {
 		t.Fatalf("download output: expected 200, got %d: %s", dw.Code, dw.Body.String())
 	}
-	data, _ := io.ReadAll(dw.Body)
+	data, err := io.ReadAll(dw.Body)
+	if err != nil {
+		t.Fatalf("read download body: %v", err)
+	}
 	if string(data) != "hello output" {
 		t.Errorf("expected 'hello output', got %q", string(data))
 	}
