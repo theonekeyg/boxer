@@ -140,8 +140,8 @@ func TestIntegration_UploadRunAndDownloadOutput(t *testing.T) {
 		t.Fatalf("expected exit_code 0, got %d (stderr: %s)", resp.ExitCode, resp.Stderr)
 	}
 
-	// Download the output file — this is the step that currently returns 404
-	// because the handler calls fileStore.PurgeOutput when persist=false.
+	// Download the captured output file. This succeeds because Persist: true
+	// prevents the handler from calling fileStore.PurgeOutput after the run.
 	outputPath := fmt.Sprintf("output/%s/result.txt", resp.ExecID)
 	dw := httptest.NewRecorder()
 	dreq, _ := http.NewRequest(http.MethodGet, "/files?path="+outputPath, http.NoBody)
