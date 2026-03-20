@@ -217,8 +217,8 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "black" },
+    { name = "boxer-sdk" },
     { name = "datasets" },
-    { name = "httpx" },
     { name = "litellm" },
     { name = "python-dotenv" },
     { name = "tqdm" },
@@ -227,8 +227,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "black", specifier = ">=26.3.1" },
+    { name = "boxer-sdk", directory = "../../packages/sdk/python" },
     { name = "datasets", specifier = ">=2.0" },
-    { name = "httpx", specifier = ">=0.27" },
     { name = "litellm", specifier = ">=1.0" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "tqdm", specifier = ">=4.0" },
@@ -236,6 +236,23 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = []
+
+[[package]]
+name = "boxer-sdk"
+version = "0.1.0"
+source = { directory = "../../packages/sdk/python" }
+dependencies = [
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "anyio", marker = "extra == 'dev'" },
+    { name = "httpx", specifier = ">=0.27" },
+    { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'" },
+]
+provides-extras = ["dev"]
 
 [[package]]
 name = "certifi"
