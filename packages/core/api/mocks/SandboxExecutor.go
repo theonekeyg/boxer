@@ -24,9 +24,9 @@ func (_m *SandboxExecutor) EXPECT() *SandboxExecutor_Expecter {
 	return &SandboxExecutor_Expecter{mock: &_m.Mock}
 }
 
-// Run provides a mock function with given fields: ctx, bundle, limits
-func (_m *SandboxExecutor) Run(ctx context.Context, bundle *sandbox.BundleDir, limits config.ResourceLimits) (*sandbox.Result, error) {
-	ret := _m.Called(ctx, bundle, limits)
+// Run provides a mock function with given fields: ctx, bundle, limits, network
+func (_m *SandboxExecutor) Run(ctx context.Context, bundle *sandbox.BundleDir, limits config.ResourceLimits, network string) (*sandbox.Result, error) {
+	ret := _m.Called(ctx, bundle, limits, network)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run")
@@ -34,19 +34,19 @@ func (_m *SandboxExecutor) Run(ctx context.Context, bundle *sandbox.BundleDir, l
 
 	var r0 *sandbox.Result
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, *sandbox.BundleDir, config.ResourceLimits) (*sandbox.Result, error)); ok {
-		return rf(ctx, bundle, limits)
+	if rf, ok := ret.Get(0).(func(context.Context, *sandbox.BundleDir, config.ResourceLimits, string) (*sandbox.Result, error)); ok {
+		return rf(ctx, bundle, limits, network)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, *sandbox.BundleDir, config.ResourceLimits) *sandbox.Result); ok {
-		r0 = rf(ctx, bundle, limits)
+	if rf, ok := ret.Get(0).(func(context.Context, *sandbox.BundleDir, config.ResourceLimits, string) *sandbox.Result); ok {
+		r0 = rf(ctx, bundle, limits, network)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*sandbox.Result)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, *sandbox.BundleDir, config.ResourceLimits) error); ok {
-		r1 = rf(ctx, bundle, limits)
+	if rf, ok := ret.Get(1).(func(context.Context, *sandbox.BundleDir, config.ResourceLimits, string) error); ok {
+		r1 = rf(ctx, bundle, limits, network)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -63,13 +63,14 @@ type SandboxExecutor_Run_Call struct {
 //   - ctx context.Context
 //   - bundle *sandbox.BundleDir
 //   - limits config.ResourceLimits
-func (_e *SandboxExecutor_Expecter) Run(ctx interface{}, bundle interface{}, limits interface{}) *SandboxExecutor_Run_Call {
-	return &SandboxExecutor_Run_Call{Call: _e.mock.On("Run", ctx, bundle, limits)}
+//   - network string
+func (_e *SandboxExecutor_Expecter) Run(ctx interface{}, bundle interface{}, limits interface{}, network interface{}) *SandboxExecutor_Run_Call {
+	return &SandboxExecutor_Run_Call{Call: _e.mock.On("Run", ctx, bundle, limits, network)}
 }
 
-func (_c *SandboxExecutor_Run_Call) Run(run func(ctx context.Context, bundle *sandbox.BundleDir, limits config.ResourceLimits)) *SandboxExecutor_Run_Call {
+func (_c *SandboxExecutor_Run_Call) Run(run func(ctx context.Context, bundle *sandbox.BundleDir, limits config.ResourceLimits, network string)) *SandboxExecutor_Run_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(*sandbox.BundleDir), args[2].(config.ResourceLimits))
+		run(args[0].(context.Context), args[1].(*sandbox.BundleDir), args[2].(config.ResourceLimits), args[3].(string))
 	})
 	return _c
 }
@@ -79,7 +80,7 @@ func (_c *SandboxExecutor_Run_Call) Return(_a0 *sandbox.Result, _a1 error) *Sand
 	return _c
 }
 
-func (_c *SandboxExecutor_Run_Call) RunAndReturn(run func(context.Context, *sandbox.BundleDir, config.ResourceLimits) (*sandbox.Result, error)) *SandboxExecutor_Run_Call {
+func (_c *SandboxExecutor_Run_Call) RunAndReturn(run func(context.Context, *sandbox.BundleDir, config.ResourceLimits, string) (*sandbox.Result, error)) *SandboxExecutor_Run_Call {
 	_c.Call.Return(run)
 	return _c
 }
