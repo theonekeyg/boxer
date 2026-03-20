@@ -1,0 +1,8 @@
+[project]
+name = "boxer-hello-world"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = ["boxer-sdk"]
+
+[tool.uv.sources]
+boxer-sdk = { path = "../../packages/sdk/python" }
