@@ -125,14 +125,10 @@ class BoxerClient:
         content: bytes | IO[bytes],
     ) -> None:
         """Upload a file to the Boxer file store."""
-        if isinstance(content, bytes):
-            file_obj: bytes | IO[bytes] = content
-        else:
-            file_obj = content
         response = self._client.post(
             "/files",
             data={"path": remote_path},
-            files={"file": file_obj},
+            files={"file": content},
         )
         _raise_for_status(response)
 
