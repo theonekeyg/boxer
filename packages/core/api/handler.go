@@ -215,6 +215,7 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 		WithEnv(req.Env).
 		WithCwd(req.Cwd).
 		WithLimits(limits).
+		WithNetwork(req.Network).
 		WithMounts(extraMounts).
 		Build()
 	if err != nil {

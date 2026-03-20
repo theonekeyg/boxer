@@ -18,6 +18,7 @@ type SpecBuilder struct {
 	cmd         []string
 	env         []string
 	cwd         string
+	network     string
 	limits      *config.ResourceLimits
 	extraMounts []specs.Mount
 	getUID      func() int
@@ -67,6 +68,14 @@ func (b *SpecBuilder) WithCwd(cwd string) *SpecBuilder {
 // WithLimits applies resource limits (CPU, memory, pids, wall clock, nofile) to the spec.
 func (b *SpecBuilder) WithLimits(limits config.ResourceLimits) *SpecBuilder {
 	b.limits = &limits
+	return b
+}
+
+// WithNetwork sets the network mode (none, sandbox, host).
+// sandbox and host omit the network namespace from the spec so gVisor can
+// attach the sandbox's netstack to the host's network interfaces.
+func (b *SpecBuilder) WithNetwork(network string) *SpecBuilder {
+	b.network = network
 	return b
 }
 
@@ -137,10 +146,15 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 
 	namespaces := []specs.LinuxNamespace{
 		{Type: specs.PIDNamespace},
-		{Type: specs.NetworkNamespace},
 		{Type: specs.IPCNamespace},
 		{Type: specs.UTSNamespace},
 		{Type: specs.MountNamespace},
+	}
+	// For sandbox/host network modes, omit the network namespace so gVisor
+	// can attach to the host's network interfaces. For none (default), include
+	// it to create an isolated namespace with no interfaces.
+	if b.network != "sandbox" && b.network != "host" {
+		namespaces = append(namespaces, specs.LinuxNamespace{Type: specs.NetworkNamespace})
 	}
 
 	var uidMappings, gidMappings []specs.LinuxIDMapping
