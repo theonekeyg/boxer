@@ -19,6 +19,7 @@ with BoxerClient() as client:
             "pip install pytest -q && pytest /project/ -v",
         ],
         files=paths,
+        network="host",
     )
 
     print(result.stdout)

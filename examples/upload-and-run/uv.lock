@@ -19,7 +19,7 @@ wheels = [
 [[package]]
 name = "boxer-sdk"
 version = "0.1.0"
-source = { directory = "../../packages/sdk/python" }
+source = { editable = "../../packages/sdk/python" }
 dependencies = [
     { name = "httpx" },
 ]
@@ -43,7 +43,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "boxer-sdk", directory = "../../packages/sdk/python" }]
+requires-dist = [{ name = "boxer-sdk", editable = "../../packages/sdk/python" }]
 
 [[package]]
 name = "certifi"

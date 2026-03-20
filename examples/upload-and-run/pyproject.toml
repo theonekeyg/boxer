@@ -5,4 +5,4 @@ requires-python = ">=3.9"
 dependencies = ["boxer-sdk"]
 
 [tool.uv.sources]
-boxer-sdk = { path = "../../packages/sdk/python" }
+boxer-sdk = { path = "../../packages/sdk/python", editable = true }
