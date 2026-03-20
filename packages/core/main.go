@@ -1,10 +1,11 @@
+// Package main is the entry point for the boxer sandbox execution service.
+//
 // @title          Boxer API
 // @version        1.0
 // @description    Sandbox execution service: pull any container image, run arbitrary commands inside gVisor.
 // @license.name   MIT
 // @host           localhost:8080
 // @BasePath       /
-
 package main
 
 import (
@@ -37,7 +38,7 @@ func main() {
 
 	// Ensure required directories exist.
 	for _, dir := range []string{cfg.Home, cfg.StateRoot(), cfg.ImageStore(), cfg.FilesRoot()} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // 0o755 required for boxer data directories
 			log.Fatal().Err(err).Str("path", dir).Msg("failed to create directory")
 		}
 	}

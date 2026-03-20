@@ -80,7 +80,7 @@ func (h *Handler) UploadFile(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "open upload: " + err.Error()})
 		return
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck // multipart file handle is read-only
 
 	if err := h.fileStore.Store(path, f); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
@@ -135,7 +135,7 @@ func (h *Handler) DownloadFile(c *gin.Context) {
 // @Failure     500      {object}  ErrorResponse       "Internal error (pull failed, runsc error)"
 // @Failure     507      {object}  ErrorResponse       "Output exceeded limit"
 // @Router      /run [post]
-func (h *Handler) Run(c *gin.Context) {
+func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers all execution lifecycle stages in sequence
 	var req RunRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, ErrorResponse{Error: err.Error()})
@@ -170,7 +170,7 @@ func (h *Handler) Run(c *gin.Context) {
 		}
 		extraMounts = append(extraMounts, specs.Mount{
 			Source:      hostPath,
-			Destination: filepath.Join("/", filePath),
+			Destination: filepath.Clean("/" + filePath),
 			Type:        "bind",
 			Options:     []string{"rbind", "ro"},
 		})
@@ -183,7 +183,7 @@ func (h *Handler) Run(c *gin.Context) {
 	// Actually we build spec first, then create bundle. To avoid a chicken-and-egg
 	// situation with the output dir path, we derive it ourselves here.
 	outputHostPath := sandbox.OutputPath(h.cfg.StateRoot(), execID)
-	if err := os.MkdirAll(outputHostPath, 0o755); err != nil {
+	if err := os.MkdirAll(outputHostPath, 0o755); err != nil { //nolint:gosec // 0o755 required for output directory
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "create output dir: " + err.Error()})
 		return
 	}
@@ -193,7 +193,7 @@ func (h *Handler) Run(c *gin.Context) {
 	bundleReady := false
 	defer func() {
 		if !bundleReady {
-			os.RemoveAll(execRoot)
+			os.RemoveAll(execRoot) //nolint:errcheck,gosec // best-effort cleanup in defer
 		}
 	}()
 

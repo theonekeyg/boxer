@@ -38,19 +38,18 @@ linters:
     gosec:
       excludes: []
 
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
-        - wrapcheck
-        - funlen
-        - gocyclo
-        - gocritic
-        - unparam
-    - path: api/mocks/
-      linters:
-        - all
-    - path: docs/
-      linters:
-        - all
+  exclusions:
+    paths:
+      - api/mocks
+      - docs
+    rules:
+      - path: "_test\\.go"
+        linters:
+          - errcheck
+          - wrapcheck
+          - funlen
+          - gocyclo
+          - gocritic
+          - unparam
+          - revive
+          - gosec

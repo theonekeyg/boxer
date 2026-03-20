@@ -1,3 +1,4 @@
+// Package image handles container image pulling, caching, and layer unpacking.
 package image
 
 import "github.com/google/go-containerregistry/pkg/authn"

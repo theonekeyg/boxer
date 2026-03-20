@@ -17,6 +17,8 @@ const readySentinel = ".ready"
 // ImageCache manages a flat merged rootfs per image digest.
 // Pull-and-unpack happens exactly once per digest; concurrent requests for the
 // same image block until the first request finishes.
+//
+//nolint:revive // ImageCache is intentional for clarity when used as image.ImageCache
 type ImageCache struct {
 	storeRoot string
 	mu        sync.Map // key: digest string → *cacheEntry
@@ -87,7 +89,7 @@ func (c *ImageCache) Rootfs(ctx context.Context, imageRef string) (string, error
 }
 
 func (c *ImageCache) pullAndUnpack(ctx context.Context, imageRef, rootfsPath, sentinel string) error {
-	if err := os.MkdirAll(rootfsPath, 0o755); err != nil {
+	if err := os.MkdirAll(rootfsPath, 0o755); err != nil { //nolint:gosec // 0o755 required for rootfs directory
 		return fmt.Errorf("create rootfs dir: %w", err)
 	}
 
@@ -97,7 +99,7 @@ func (c *ImageCache) pullAndUnpack(ctx context.Context, imageRef, rootfsPath, se
 	}
 	defer func() {
 		for _, l := range layers {
-			l.Close()
+			l.Close() //nolint:errcheck,gosec // layer readers are in-memory; close errors irrelevant
 		}
 	}()
 
@@ -105,7 +107,7 @@ func (c *ImageCache) pullAndUnpack(ctx context.Context, imageRef, rootfsPath, se
 		return fmt.Errorf("unpack layers: %w", err)
 	}
 
-	if err := os.WriteFile(sentinel, []byte{}, 0o644); err != nil {
+	if err := os.WriteFile(sentinel, []byte{}, 0o600); err != nil {
 		return fmt.Errorf("write sentinel: %w", err)
 	}
 	return nil
@@ -185,7 +187,7 @@ func resolveRegistryDigest(ctx context.Context, imageRef string) (string, error)
 	}
 	d, err := img.Digest()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("image digest: %w", err)
 	}
 	return d.String(), nil
 }

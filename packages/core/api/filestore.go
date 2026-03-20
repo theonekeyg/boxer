@@ -32,16 +32,19 @@ func (s *FileStore) Store(path string, r io.Reader) error {
 		return err
 	}
 	abs := filepath.Join(s.root, path)
-	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil { //nolint:gosec // 0o755 required for file store directories
 		return fmt.Errorf("create parent dirs: %w", err)
 	}
-	f, err := os.Create(abs)
+	f, err := os.Create(abs) //nolint:gosec // path validated by validateWritePath above
 	if err != nil {
 		return fmt.Errorf("create file: %w", err)
 	}
-	defer f.Close()
 	if _, err := io.Copy(f, r); err != nil {
+		f.Close() //nolint:errcheck,gosec // superseded by copy error
 		return fmt.Errorf("write file: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close file: %w", err)
 	}
 	return nil
 }
@@ -60,13 +63,16 @@ func (s *FileStore) Delete(path string) error {
 	if err := s.validateWritePath(path); err != nil {
 		return err
 	}
-	return os.Remove(filepath.Join(s.root, path))
+	if err := os.Remove(filepath.Join(s.root, path)); err != nil {
+		return fmt.Errorf("remove: %w", err)
+	}
+	return nil
 }
 
 // CaptureOutput copies all files from srcDir into <root>/output/<execID>/.
 func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 	destDir := filepath.Join(s.root, "output", execID)
-	if err := os.MkdirAll(destDir, 0o755); err != nil {
+	if err := os.MkdirAll(destDir, 0o755); err != nil { //nolint:gosec // 0o755 required for output directory
 		return fmt.Errorf("create output dir: %w", err)
 	}
 	entries, err := os.ReadDir(srcDir)
@@ -109,16 +115,21 @@ func (s *FileStore) validateWritePath(path string) error {
 }
 
 func copyFile(src, dst string) error {
-	in, err := os.Open(src)
+	in, err := os.Open(src) //nolint:gosec // internal path from validated source directory
 	if err != nil {
-		return err
+		return fmt.Errorf("open source: %w", err)
 	}
-	defer in.Close()
-	out, err := os.Create(dst)
+	defer in.Close() //nolint:errcheck // source file is read-only
+	out, err := os.Create(dst) //nolint:gosec // internal path from validated destination directory
 	if err != nil {
-		return err
+		return fmt.Errorf("create dest: %w", err)
 	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
+	if _, err = io.Copy(out, in); err != nil {
+		out.Close() //nolint:errcheck,gosec // superseded by copy error
+		return fmt.Errorf("copy: %w", err)
+	}
+	if err := out.Close(); err != nil {
+		return fmt.Errorf("close dest: %w", err)
+	}
+	return nil
 }

@@ -1,3 +1,4 @@
+// Package sandbox manages OCI bundle directories and runs containers via gVisor runsc.
 package sandbox
 
 import (
@@ -39,7 +40,7 @@ func NewBundleDir(stateRoot, execID string, spec *specs.Spec) (*BundleDir, error
 	outputDir := filepath.Join(execRoot, "output")
 
 	for _, dir := range []string{bundlePath, runscState, outputDir} {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // 0o755 required for bundle directories
 			return nil, fmt.Errorf("create bundle dir: %w", err)
 		}
 	}
@@ -49,7 +50,7 @@ func NewBundleDir(stateRoot, execID string, spec *specs.Spec) (*BundleDir, error
 		return nil, fmt.Errorf("marshal spec: %w", err)
 	}
 	configPath := filepath.Join(bundlePath, "config.json")
-	if err := os.WriteFile(configPath, configJSON, 0o644); err != nil {
+	if err := os.WriteFile(configPath, configJSON, 0o644); err != nil { //nolint:gosec // config.json is not secret; 0o644 allows runsc to read it
 		return nil, fmt.Errorf("write config.json: %w", err)
 	}
 
