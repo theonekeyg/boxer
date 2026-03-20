@@ -108,10 +108,9 @@ func TestIntegration_RunPython(t *testing.T) {
 	}
 }
 
-// TestIntegration_UploadRunAndDownloadOutput replicates the Python SDK test
-// test_upload_run_and_download_output, which fails because the handler purges
-// the output directory when persist=false (default), making the output file
-// unavailable for download after the run completes.
+// TestIntegration_UploadRunAndDownloadOutput uploads a script that writes a file
+// to /output inside the container, runs it with persist=true, then downloads the
+// captured output file and verifies its contents.
 func TestIntegration_UploadRunAndDownloadOutput(t *testing.T) {
 	r := newIntegrationRouter(t)
 
@@ -119,7 +118,7 @@ func TestIntegration_UploadRunAndDownloadOutput(t *testing.T) {
 	script := []byte("import os; os.makedirs('/output', exist_ok=True); open('/output/result.txt', 'w').write('hello output')\n")
 	doIntegrationUpload(t, r, "write_output.py", script)
 
-	// Run the script without persist — default behaviour.
+	// Run the script with persist=true so the output directory is not purged.
 	body, _ := json.Marshal(RunRequest{
 		Image:   "python:3.12-slim",
 		Cmd:     []string{"python3", "/write_output.py"},
