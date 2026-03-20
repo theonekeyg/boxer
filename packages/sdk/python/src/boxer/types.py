@@ -33,3 +33,18 @@ class RunResult:
     stdout: str
     stderr: str
     wall_ms: int
+
+    def __post_init__(self) -> None:
+        for field, expected in (
+            ("exec_id", str),
+            ("exit_code", int),
+            ("stdout", str),
+            ("stderr", str),
+            ("wall_ms", int),
+        ):
+            value = getattr(self, field)
+            if not isinstance(value, expected):
+                raise TypeError(
+                    f"RunResult.{field} must be {expected.__name__}, "
+                    f"got {type(value).__name__}"
+                )

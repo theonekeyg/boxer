@@ -48,13 +48,18 @@ def _build_run_body(
 
 
 def _parse_run_result(data: dict) -> RunResult:
-    return RunResult(
-        exec_id=data["exec_id"],
-        exit_code=data["exit_code"],
-        stdout=data["stdout"],
-        stderr=data["stderr"],
-        wall_ms=data["wall_ms"],
-    )
+    try:
+        return RunResult(
+            exec_id=data["exec_id"],
+            exit_code=data["exit_code"],
+            stdout=data["stdout"],
+            stderr=data["stderr"],
+            wall_ms=data["wall_ms"],
+        )
+    except KeyError as e:
+        raise ValueError(
+            f"Unexpected response from Boxer API: missing field {e}"
+        ) from e
 
 
 class BoxerClient:
