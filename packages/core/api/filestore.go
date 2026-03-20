@@ -70,11 +70,10 @@ func (s *FileStore) Delete(path string) error {
 }
 
 // CaptureOutput copies all files from srcDir into <root>/output/<execID>/.
+// The destination directory is created lazily — if the container writes no
+// files to /output/, no directory is created in the file store.
 func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 	destDir := filepath.Join(s.root, "output", execID)
-	if err := os.MkdirAll(destDir, 0o755); err != nil { //nolint:gosec // 0o755 required for output directory
-		return fmt.Errorf("create output dir: %w", err)
-	}
 	entries, err := os.ReadDir(srcDir)
 	if err != nil {
 		return fmt.Errorf("read output dir: %w", err)
@@ -83,11 +82,24 @@ func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 		if entry.IsDir() {
 			continue
 		}
+		if err := os.MkdirAll(destDir, 0o755); err != nil { //nolint:gosec // 0o755 required for output directory
+			return fmt.Errorf("create output dir: %w", err)
+		}
 		src := filepath.Join(srcDir, entry.Name())
 		dst := filepath.Join(destDir, entry.Name())
 		if err := copyFile(src, dst); err != nil {
 			return fmt.Errorf("copy %s: %w", entry.Name(), err)
 		}
+	}
+	return nil
+}
+
+// PurgeOutput removes the output directory for the given execution ID.
+// It is a no-op if no output was captured (directory does not exist).
+func (s *FileStore) PurgeOutput(execID string) error {
+	destDir := filepath.Join(s.root, "output", execID)
+	if err := os.RemoveAll(destDir); err != nil {
+		return fmt.Errorf("purge output %s: %w", execID, err)
 	}
 	return nil
 }

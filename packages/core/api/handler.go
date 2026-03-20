@@ -248,12 +248,15 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 		return
 	}
 
-	// Clean up input files unless the caller asked to keep them.
+	// Clean up files unless the caller asked to keep them.
 	if !req.Persist {
 		for _, filePath := range req.Files {
 			if delErr := h.fileStore.Delete(filePath); delErr != nil {
 				zerolog.Ctx(ctx).Warn().Err(delErr).Str("path", filePath).Msg("failed to delete input file")
 			}
+		}
+		if purgeErr := h.fileStore.PurgeOutput(execID); purgeErr != nil {
+			zerolog.Ctx(ctx).Warn().Err(purgeErr).Str("exec_id", execID).Msg("failed to purge output dir")
 		}
 	}
 
