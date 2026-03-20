@@ -11,7 +11,7 @@ from pathlib import Path
 
 import black
 import litellm
-from boxer import AsyncBoxerClient, BoxerAPIError, BoxerTimeoutError, ResourceLimits
+from boxer import AsyncBoxerClient, BoxerAPIError, BoxerTimeoutError, ResourceLimits, RunResult
 from datasets import load_dataset
 from dotenv import load_dotenv
 
@@ -39,7 +39,7 @@ async def run_in_boxer(
     client: AsyncBoxerClient,
     task_id: str,
     code: str,
-) -> "RunResult":
+) -> RunResult:
     """Upload code to boxer and execute it inside an isolated sandbox container.
 
     The file is uploaded first via POST /files, then executed via POST /run.
