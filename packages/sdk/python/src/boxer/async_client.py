@@ -16,15 +16,10 @@ class AsyncBoxerClient:
         self,
         base_url: str = "http://localhost:8080",
         timeout: float = 120.0,
-        api_key: Optional[str] = None,
     ) -> None:
-        headers = {}
-        if api_key:
-            headers["Authorization"] = f"Bearer {api_key}"
         self._client = httpx.AsyncClient(
             base_url=base_url,
             timeout=timeout,
-            headers=headers,
         )
 
     async def __aenter__(self) -> "AsyncBoxerClient":
