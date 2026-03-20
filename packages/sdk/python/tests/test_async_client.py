@@ -70,6 +70,43 @@ async def test_upload_run_and_download_output(
 
 
 @needs_server
+async def test_upload_path_single_file(client: AsyncBoxerClient, tmp_path: Path) -> None:
+    f = tmp_path / "hello.txt"
+    f.write_text("hello from upload_path")
+
+    paths = await client.upload_path(f)
+    assert paths == ["hello.txt"]
+
+    result = await client.run(
+        image=IMAGE,
+        cmd=["python3", "-c", "import os; print(os.path.exists('/hello.txt'))"],
+        files=paths,
+    )
+    assert result.exit_code == 0
+    assert result.stdout.strip() == "True"
+
+
+@needs_server
+async def test_upload_path_directory(client: AsyncBoxerClient, tmp_path: Path) -> None:
+    (tmp_path / "a.txt").write_text("file a")
+    (tmp_path / "sub").mkdir()
+    (tmp_path / "sub" / "b.txt").write_text("file b")
+
+    paths = await client.upload_path(tmp_path, remote_path="mydir")
+    assert sorted(paths) == ["mydir/a.txt", "mydir/sub/b.txt"]
+
+    result = await client.run(
+        image=IMAGE,
+        cmd=["python3", "-c",
+             "import os; "
+             "print(os.path.exists('/mydir/a.txt') and os.path.exists('/mydir/sub/b.txt'))"],
+        files=paths,
+    )
+    assert result.exit_code == 0
+    assert result.stdout.strip() == "True"
+
+
+@needs_server
 async def test_timeout_raises(client: AsyncBoxerClient) -> None:
     limits = ResourceLimits(wall_clock_secs=1)
     with pytest.raises(BoxerTimeoutError):
