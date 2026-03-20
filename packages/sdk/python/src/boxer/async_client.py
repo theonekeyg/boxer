@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import IO, List, Optional, Union
 
 import httpx
@@ -77,6 +78,38 @@ class AsyncBoxerClient:
             files={"file": content},
         )
         _raise_for_status(response)
+
+    async def upload_path(
+        self,
+        local_path: Union[str, Path],
+        remote_path: Optional[str] = None,
+    ) -> List[str]:
+        """Upload a local file or directory to the Boxer file store.
+
+        If *local_path* is a directory, all files inside it are uploaded
+        recursively, preserving the directory structure under *remote_path*
+        (defaults to the directory name).
+
+        Returns the list of remote paths that were uploaded.
+        """
+        local = Path(local_path)
+        if local.is_dir():
+            prefix = remote_path if remote_path is not None else local.name
+            uploaded = []
+            for file in sorted(local.rglob("*")):
+                if not file.is_file():
+                    continue
+                rel = file.relative_to(local)
+                dest = f"{prefix}/{rel}"
+                with open(file, "rb") as fh:
+                    await self.upload_file(dest, fh)
+                uploaded.append(dest)
+            return uploaded
+        else:
+            dest = remote_path if remote_path is not None else local.name
+            with open(local, "rb") as fh:
+                await self.upload_file(dest, fh)
+            return [dest]
 
     async def download_file(self, path: str) -> bytes:
         """Download a file from the Boxer file store."""
