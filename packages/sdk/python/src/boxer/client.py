@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import IO, List, Optional, Union
 
 import httpx
@@ -137,57 +136,3 @@ class BoxerClient:
         _raise_for_status(response)
         return response.content
 
-    # ------------------------------------------------------------------
-    # Convenience helpers
-    # ------------------------------------------------------------------
-
-    def run_script(
-        self,
-        code: str,
-        image: str = "python:3.12-slim",
-        *,
-        interpreter: Optional[List[str]] = None,
-        limits: Optional[ResourceLimits] = None,
-    ) -> RunResult:
-        """Run inline code without manual file management.
-
-        Executes: <interpreter> <code>
-        Default interpreter: ["python3", "-c"]
-        """
-        if interpreter is None:
-            interpreter = ["python3", "-c"]
-        cmd = interpreter + [code]
-        return self.run(image=image, cmd=cmd, limits=limits)
-
-    def run_file(
-        self,
-        local_path: Union[str, Path],
-        image: str,
-        *,
-        remote_path: Optional[str] = None,
-        cmd_prefix: Optional[List[str]] = None,
-        limits: Optional[ResourceLimits] = None,
-        persist: bool = False,
-    ) -> RunResult:
-        """Upload a local file and run it inside the sandbox.
-
-        Uploads *local_path* to *remote_path* (defaults to the basename),
-        then invokes ``cmd_prefix + [/<remote_path>]`` inside the container.
-        """
-        local = Path(local_path)
-        if remote_path is None:
-            remote_path = local.name
-        if cmd_prefix is None:
-            cmd_prefix = ["python3"]
-
-        with open(local, "rb") as fh:
-            self.upload_file(remote_path, fh)
-
-        container_path = f"/{remote_path}"
-        return self.run(
-            image=image,
-            cmd=cmd_prefix + [container_path],
-            files=[remote_path],
-            limits=limits,
-            persist=persist,
-        )

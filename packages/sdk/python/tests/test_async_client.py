@@ -32,13 +32,6 @@ async def test_run_inline(client: AsyncBoxerClient) -> None:
 
 
 @needs_server
-async def test_run_script(client: AsyncBoxerClient) -> None:
-    result = await client.run_script("print(42)", image=IMAGE)
-    assert result.exit_code == 0
-    assert result.stdout.strip() == "42"
-
-
-@needs_server
 async def test_nonzero_exit_code(client: AsyncBoxerClient) -> None:
     result = await client.run(image=IMAGE, cmd=["python3", "-c", "exit(1)"])
     assert result.exit_code == 1
@@ -59,20 +52,20 @@ async def test_upload_and_run_with_file(client: AsyncBoxerClient) -> None:
 
 
 @needs_server
-async def test_run_file_and_download_output(
+async def test_upload_run_and_download_output(
     client: AsyncBoxerClient, tmp_path: Path
 ) -> None:
-    script = tmp_path / "write_output_async.py"
-    script.write_text(
-        "import os\n"
-        "os.makedirs('/output', exist_ok=True)\n"
-        "open('/output/result.txt', 'w').write('hello async output')\n"
+    script = b"import os; os.makedirs('/output', exist_ok=True); open('/output/result.txt', 'w').write('hello async output')\n"
+    remote = "write_output_async.py"
+    await client.upload_file(remote, script)
+    result = await client.run(
+        image=IMAGE,
+        cmd=["python3", f"/{remote}"],
+        files=[remote],
     )
-    result = await client.run_file(local_path=script, image=IMAGE)
     assert result.exit_code == 0
 
-    output_path = f"output/{result.exec_id}/result.txt"
-    data = await client.download_file(output_path)
+    data = await client.download_file(f"output/{result.exec_id}/result.txt")
     assert data == b"hello async output"
 
 

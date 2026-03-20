@@ -39,13 +39,6 @@ result = client.run(
 print(result.stdout)  # hello world
 ```
 
-Or use the `run_script` shortcut for inline Python:
-
-```python
-result = client.run_script("print('hello world')")
-print(result.stdout)  # hello world
-```
-
 ### Node.js
 
 ```python
@@ -76,6 +69,7 @@ Upload a file to the Boxer file store, then reference it by path in `run`.
 The file is bind-mounted read-only at `/<remote_path>` inside the container.
 
 ```python
+# Python
 with open("script.py", "rb") as f:
     client.upload_file("script.py", f)
 
@@ -84,34 +78,25 @@ result = client.run(
     cmd=["python3", "/script.py"],
     files=["script.py"],
 )
-print(result.stdout)
-```
 
-The `run_file` helper combines upload + run in one call:
-
-```python
-result = client.run_file(
-    local_path="script.py",
-    image="python:3.12-slim",
-)
-print(result.stdout)
-```
-
-It also works for Node.js and Perl scripts by setting `cmd_prefix`:
-
-```python
 # Node.js
-result = client.run_file(
-    local_path="app.js",
+with open("app.js", "rb") as f:
+    client.upload_file("app.js", f)
+
+result = client.run(
     image="node:20-slim",
-    cmd_prefix=["node"],
+    cmd=["node", "/app.js"],
+    files=["app.js"],
 )
 
 # Perl
-result = client.run_file(
-    local_path="hello.pl",
+with open("hello.pl", "rb") as f:
+    client.upload_file("hello.pl", f)
+
+result = client.run(
     image="perl:5.38-slim",
-    cmd_prefix=["perl"],
+    cmd=["perl", "/hello.pl"],
+    files=["hello.pl"],
 )
 ```
 
@@ -177,7 +162,10 @@ from boxer import AsyncBoxerClient
 
 async def main():
     async with AsyncBoxerClient("http://localhost:8080") as client:
-        result = await client.run_script("print('hello world')")
+        result = await client.run(
+            image="python:3.12-slim",
+            cmd=["python3", "-c", "print('hello world')"],
+        )
         print(result.stdout)
 
 asyncio.run(main())
