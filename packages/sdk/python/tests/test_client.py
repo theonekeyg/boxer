@@ -63,6 +63,7 @@ def test_upload_run_and_download_output(client: BoxerClient, tmp_path: Path) -> 
         image=IMAGE,
         cmd=["python3", f"/{remote}"],
         files=[remote],
+        persist=True,
     )
     assert result.exit_code == 0
 

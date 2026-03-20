@@ -32,6 +32,7 @@ def _build_run_body(
     limits: ResourceLimits | None,
     files: list[str],
     persist: bool,
+    network: str | None,
 ) -> dict:
     body: dict = {"image": image, "cmd": cmd}
     if env:
@@ -44,6 +45,8 @@ def _build_run_body(
         body["files"] = files
     if persist:
         body["persist"] = persist
+    if network is not None:
+        body["network"] = network
     return body
 
 
@@ -104,6 +107,7 @@ class BoxerClient:
         limits: ResourceLimits | None = None,
         files: list[str] | None = None,
         persist: bool = False,
+        network: str | None = None,
     ) -> RunResult:
         """Execute a command inside a sandboxed container."""
         body = _build_run_body(
@@ -114,6 +118,7 @@ class BoxerClient:
             limits=limits,
             files=files or [],
             persist=persist,
+            network=network,
         )
         response = self._client.post("/run", json=body)
         _raise_for_status(response)

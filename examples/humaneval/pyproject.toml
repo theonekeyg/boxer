@@ -15,4 +15,4 @@ dependencies = [
 dev = []
 
 [tool.uv.sources]
-boxer-sdk = { path = "../../packages/sdk/python" }
+boxer-sdk = { path = "../../packages/sdk/python", editable = true }

@@ -51,6 +51,7 @@ class AsyncBoxerClient:
         limits: ResourceLimits | None = None,
         files: list[str] | None = None,
         persist: bool = False,
+        network: str | None = None,
     ) -> RunResult:
         """Execute a command inside a sandboxed container."""
         body = _build_run_body(
@@ -61,6 +62,7 @@ class AsyncBoxerClient:
             limits=limits,
             files=files or [],
             persist=persist,
+            network=network,
         )
         response = await self._client.post("/run", json=body)
         _raise_for_status(response)

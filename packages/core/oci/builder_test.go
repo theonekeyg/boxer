@@ -228,6 +228,20 @@ func TestBuild_Namespaces(t *testing.T) {
 	}
 }
 
+func TestBuild_NetworkSandbox_OmitsNetworkNamespace(t *testing.T) {
+	for _, mode := range []string{"sandbox", "host"} {
+		spec, err := baseBuilder().WithNetwork(mode).Build()
+		if err != nil {
+			t.Fatalf("network=%s: %v", mode, err)
+		}
+		for _, ns := range spec.Linux.Namespaces {
+			if ns.Type == specs.NetworkNamespace {
+				t.Errorf("network=%s: expected no NetworkNamespace in spec", mode)
+			}
+		}
+	}
+}
+
 func TestBuild_PathEnvFallback(t *testing.T) {
 	// No PATH in env — builder should prepend a default PATH.
 	spec, err := NewSpecBuilder("/rootfs", "exec-1").

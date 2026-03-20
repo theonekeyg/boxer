@@ -16,5 +16,5 @@ type ImageCacher interface {
 
 // SandboxExecutor runs an OCI bundle inside a gVisor sandbox.
 type SandboxExecutor interface {
-	Run(ctx context.Context, bundle *sandbox.BundleDir, limits config.ResourceLimits) (*sandbox.Result, error)
+	Run(ctx context.Context, bundle *sandbox.BundleDir, limits config.ResourceLimits, network string) (*sandbox.Result, error)
 }

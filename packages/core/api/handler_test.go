@@ -101,7 +101,7 @@ func TestRun_Timeout(t *testing.T) {
 	exec := mocks.NewSandboxExecutor(t)
 	exec.EXPECT().Run(mock.Anything,
 		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
-		config.ResourceLimits{}).
+		config.ResourceLimits{}, "").
 		Return(nil, fmt.Errorf("%w after 5000ms", sandbox.ErrTimeout))
 
 	r := newTestHandler(t, cache, exec)
@@ -119,7 +119,7 @@ func TestRun_OutputLimit(t *testing.T) {
 	exec := mocks.NewSandboxExecutor(t)
 	exec.EXPECT().Run(mock.Anything,
 		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
-		config.ResourceLimits{}).
+		config.ResourceLimits{}, "").
 		Return(nil, fmt.Errorf("%w: limit=1024 bytes", sandbox.ErrOutputLimit))
 
 	r := newTestHandler(t, cache, exec)
@@ -137,7 +137,7 @@ func TestRun_ExecutorError(t *testing.T) {
 	exec := mocks.NewSandboxExecutor(t)
 	exec.EXPECT().Run(mock.Anything,
 		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
-		config.ResourceLimits{}).
+		config.ResourceLimits{}, "").
 		Return(nil, fmt.Errorf("runsc exploded"))
 
 	r := newTestHandler(t, cache, exec)
@@ -155,7 +155,7 @@ func TestRun_Success(t *testing.T) {
 	exec := mocks.NewSandboxExecutor(t)
 	exec.EXPECT().Run(mock.Anything,
 		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
-		config.ResourceLimits{}).
+		config.ResourceLimits{}, "").
 		Return(&sandbox.Result{
 			ExitCode: 0,
 			Stdout:   []byte("hello\n"),
@@ -191,7 +191,7 @@ func TestRun_NonZeroExitCode(t *testing.T) {
 	exec := mocks.NewSandboxExecutor(t)
 	exec.EXPECT().Run(mock.Anything,
 		mock.MatchedBy(func(b *sandbox.BundleDir) bool { return b != nil && b.BundlePath() != "" }),
-		config.ResourceLimits{}).
+		config.ResourceLimits{}, "").
 		Return(&sandbox.Result{
 			ExitCode: 1,
 			Stdout:   []byte(""),
@@ -330,7 +330,7 @@ func TestRun_WithFiles_MountsInjected(t *testing.T) {
 			}
 			return hasInput && hasOutput
 		}),
-		config.ResourceLimits{},
+		config.ResourceLimits{}, "",
 	).Return(&sandbox.Result{ExitCode: 0, Stdout: []byte("1\n")}, nil)
 
 	h := NewHandler(cfg, cache, exec, store)

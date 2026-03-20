@@ -144,6 +144,12 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 	if req.Cwd == "" {
 		req.Cwd = "/"
 	}
+	switch req.Network {
+	case "", "none", "sandbox", "host":
+	default:
+		c.JSON(http.StatusBadRequest, ErrorResponse{Error: "invalid network: must be none, sandbox, or host"})
+		return
+	}
 
 	limits := h.cfg.ResolveLimits(req.Limits)
 
@@ -209,6 +215,7 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 		WithEnv(req.Env).
 		WithCwd(req.Cwd).
 		WithLimits(limits).
+		WithNetwork(req.Network).
 		WithMounts(extraMounts).
 		Build()
 	if err != nil {
@@ -233,7 +240,7 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 	}
 	defer cancel()
 
-	result, err := h.executor.Run(runCtx, bundle, limits)
+	result, err := h.executor.Run(runCtx, bundle, limits, req.Network)
 	if err != nil {
 		zerolog.Ctx(ctx).Error().Err(err).Msg("execution failed")
 		status := httpStatus(err)

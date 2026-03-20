@@ -11,6 +11,7 @@ type RunRequest struct {
 	Limits  *config.ResourceLimits `json:"limits"`
 	Files   []string               `json:"files"`   // relative paths of uploaded files to bind-mount read-only
 	Persist bool                   `json:"persist"` // keep input files after run (default false)
+	Network string                 `json:"network"` // network mode: none (default), sandbox, host
 }
 
 // RunResponse is the JSON body returned for a completed execution.

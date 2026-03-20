@@ -41,7 +41,7 @@ var ErrOutputLimit = errors.New("output limit exceeded")
 
 // Run executes the OCI bundle in the given BundleDir inside a gVisor sandbox.
 // The caller should set a context deadline matching the wall-clock limit.
-func (e *Executor) Run(ctx context.Context, bundle *BundleDir, _ config.ResourceLimits) (*Result, error) { //nolint:gocyclo,funlen // Run handles all execution and error-recovery paths of the sandbox lifecycle
+func (e *Executor) Run(ctx context.Context, bundle *BundleDir, _ config.ResourceLimits, network string) (*Result, error) { //nolint:gocyclo,funlen // Run handles all execution and error-recovery paths of the sandbox lifecycle
 	runscBin, err := e.cfg.RunscBin()
 	if err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, _ config.Resource
 	args := []string{
 		"--root", bundle.RunscRoot(),
 		"--platform", e.cfg.Platform,
-		"--network=none",
+		"--network=" + networkMode(network),
 		"--log-format=text",
 		"--debug",
 		"--debug-log=/tmp/runsc-" + bundle.ExecID + ".log",
@@ -153,6 +153,16 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, _ config.Resource
 		Stderr:   stderrRes.data,
 		WallMs:   wallMs,
 	}, nil
+}
+
+// networkMode returns a valid runsc --network value, defaulting to "none".
+func networkMode(network string) string {
+	switch network {
+	case "sandbox", "host":
+		return network
+	default:
+		return "none"
+	}
 }
 
 // killSandbox sends SIGKILL to a timed-out container (best-effort).

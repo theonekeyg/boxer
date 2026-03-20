@@ -65,6 +65,7 @@ async def test_upload_run_and_download_output(
         image=IMAGE,
         cmd=["python3", f"/{remote}"],
         files=[remote],
+        persist=True,
     )
     assert result.exit_code == 0
 
