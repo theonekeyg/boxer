@@ -41,9 +41,19 @@ async def run_in_boxer(
     task_id: str,
     code: str,
 ) -> dict:
+    """Upload code to boxer and execute it inside an isolated sandbox container.
+
+    The file is uploaded first via POST /files, then executed via POST /run.
+    boxer mounts the uploaded file read-only inside the container at /<filename>
+    and removes it from the file store after the run completes (persist=False is
+    the default).
+
+    Returns the raw JSON response from POST /run, which includes exit_code,
+    stdout, stderr, and wall_ms.
+    """
+    # Step 1: upload the generated test script to boxer's file store.
     filename = f"run/{task_id}.py"
     code_bytes = code.encode()
-
     upload_resp = await http.post(
         f"{boxer_url}/files",
         files={"file": (filename, code_bytes, "text/x-python")},
@@ -51,6 +61,9 @@ async def run_in_boxer(
     )
     upload_resp.raise_for_status()
 
+    # Step 2: run the script inside a sandboxed python:3.12-slim container.
+    # boxer mounts the file at /<filename> and passes it to python3.
+    # wall_clock_secs caps total execution time; memory_mb limits RAM.
     run_resp = await http.post(
         f"{boxer_url}/run",
         json={
