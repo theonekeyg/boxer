@@ -1,0 +1,29 @@
+version: "3"
+
+tasks:
+  build:
+    desc: Build the SDK (ESM + CJS + type declarations)
+    cmds:
+      - pnpm run build
+
+  lint:
+    desc: Run Biome linter and formatter check
+    cmds:
+      - pnpm run lint
+
+  format:
+    desc: Format source files with Biome
+    cmds:
+      - pnpm run format
+
+  typecheck:
+    desc: Run TypeScript type checker (no emit)
+    cmds:
+      - pnpm run typecheck
+
+  test:
+    desc: Run integration tests against a live Boxer server
+    cmds:
+      - pnpm run test
+    env:
+      BOXER_URL: '{{.BOXER_URL | default "http://localhost:8080"}}'
