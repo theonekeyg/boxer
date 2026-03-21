@@ -58,6 +58,7 @@ func (e *Executor) Run(ctx context.Context, bundle *BundleDir, _ config.Resource
 		"--log-format=text",
 		"--debug",
 		"--debug-log=/tmp/runsc-" + bundle.ExecID + ".log",
+		"--log-packets",
 	}
 	if e.cfg.IgnoreCgroups {
 		args = append(args, "--ignore-cgroups")

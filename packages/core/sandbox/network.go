@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -151,6 +152,15 @@ func ensureBridge() error {
 		return fmt.Errorf("bring bridge up: %w", err)
 	}
 
+	// If firewalld is active it manages nftables directly, which takes priority
+	// over the legacy iptables compatibility layer. In that case configure the
+	// bridge via firewall-cmd; also run the iptables rules for non-firewalld hosts.
+	if firewalldActive() {
+		if err := ensureFirewalldRules(); err != nil {
+			return err
+		}
+	}
+
 	ipt, err := iptables.New()
 	if err != nil {
 		return fmt.Errorf("init iptables: %w", err)
@@ -159,6 +169,27 @@ func ensureBridge() error {
 		return err
 	}
 	return ensureMasquerade(ipt)
+}
+
+// firewalldActive reports whether firewalld is currently running.
+func firewalldActive() bool {
+	return exec.Command("firewall-cmd", "--state").Run() == nil //nolint:gosec
+}
+
+// ensureFirewalldRules adds boxer0 to firewalld's trusted zone and enables
+// masquerade for that zone. Both operations are idempotent.
+func ensureFirewalldRules() error {
+	cmds := [][]string{
+		{"firewall-cmd", "--zone=trusted", "--add-interface=" + bridgeName},
+		{"firewall-cmd", "--zone=trusted", "--add-masquerade"},
+	}
+	for _, args := range cmds {
+		out, err := exec.Command(args[0], args[1:]...).CombinedOutput() //nolint:gosec
+		if err != nil {
+			return fmt.Errorf("firewall-cmd %v: %w: %s", args[1:], err, out)
+		}
+	}
+	return nil
 }
 
 // ensureForwardRules installs iptables FORWARD ACCEPT rules so that traffic
@@ -170,10 +201,10 @@ func ensureForwardRules(ipt *iptables.IPTables) error {
 		rulespec []string
 	}
 	rules := []rule{
-		// Allow outbound traffic from boxer0.
+		// Allow all traffic from the boxer0 bridge (container → internet).
 		{[]string{"-i", bridgeName, "-j", "ACCEPT"}},
-		// Allow established/related traffic back into boxer0.
-		{[]string{"-o", bridgeName, "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"}},
+		// Allow all traffic to the boxer0 bridge (internet → container).
+		{[]string{"-o", bridgeName, "-j", "ACCEPT"}},
 	}
 	for _, r := range rules {
 		exists, err := ipt.Exists("filter", "FORWARD", r.rulespec...)
