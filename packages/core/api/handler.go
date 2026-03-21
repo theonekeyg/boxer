@@ -184,6 +184,33 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 
 	execID := sandbox.NewExecID()
 
+	// For sandbox/host network modes, configure a network namespace before
+	// building the OCI spec so that gVisor can join a prepared netns with a
+	// veth pair, IP address, and routes already in place.
+	var netnsPath string
+	if req.Network == "sandbox" || req.Network == "host" {
+		if os.Getuid() != 0 {
+			c.JSON(http.StatusBadRequest, ErrorResponse{
+				Error: "network=" + req.Network + " requires boxer to run as root (CAP_NET_ADMIN)",
+			})
+			return
+		}
+		netSetup, nsErr := sandbox.SetupNetwork(execID, h.cfg.ResolveDNSServers())
+		if nsErr != nil {
+			zerolog.Ctx(ctx).Error().Err(nsErr).Msg("network setup failed")
+			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "network setup failed: " + nsErr.Error()})
+			return
+		}
+		defer netSetup.Teardown()
+		netnsPath = netSetup.NetNSPath()
+		extraMounts = append(extraMounts, specs.Mount{
+			Source:      netSetup.ResolvConfPath(),
+			Destination: "/etc/resolv.conf",
+			Type:        "bind",
+			Options:     []string{"rbind", "ro"},
+		})
+	}
+
 	// We need the bundle's output dir for the output mount; create the bundle
 	// directory structure first so we can get that path, then re-build the spec.
 	// Actually we build spec first, then create bundle. To avoid a chicken-and-egg
@@ -216,6 +243,7 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 		WithCwd(req.Cwd).
 		WithLimits(limits).
 		WithNetwork(req.Network).
+		WithNetworkNamespacePath(netnsPath).
 		WithMounts(extraMounts).
 		Build()
 	if err != nil {

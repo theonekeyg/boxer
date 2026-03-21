@@ -1,7 +1,7 @@
-.task
-.claude
+.task/
+.claude/
 __debug_bin*
 coverage.html
 coverage.out
 .env
-./worktrees
+worktrees/

@@ -19,6 +19,7 @@ type SpecBuilder struct {
 	env         []string
 	cwd         string
 	network     string
+	netnsPath   string // pre-configured netns path for sandbox/host modes
 	limits      *config.ResourceLimits
 	extraMounts []specs.Mount
 	getUID      func() int
@@ -72,10 +73,17 @@ func (b *SpecBuilder) WithLimits(limits config.ResourceLimits) *SpecBuilder {
 }
 
 // WithNetwork sets the network mode (none, sandbox, host).
-// sandbox and host omit the network namespace from the spec so gVisor can
-// attach the sandbox's netstack to the host's network interfaces.
 func (b *SpecBuilder) WithNetwork(network string) *SpecBuilder {
 	b.network = network
+	return b
+}
+
+// WithNetworkNamespacePath sets the path of a pre-configured network namespace
+// to be joined by the container. Required when network is "sandbox" or "host":
+// gVisor will enter this namespace (which must have been set up by CNI) instead
+// of creating a new, empty one.
+func (b *SpecBuilder) WithNetworkNamespacePath(path string) *SpecBuilder {
+	b.netnsPath = path
 	return b
 }
 
@@ -150,10 +158,20 @@ func (b *SpecBuilder) Build() (*specs.Spec, error) {
 		{Type: specs.UTSNamespace},
 		{Type: specs.MountNamespace},
 	}
-	// For sandbox/host network modes, omit the network namespace so gVisor
-	// can attach to the host's network interfaces. For none (default), include
-	// it to create an isolated namespace with no interfaces.
-	if b.network != "sandbox" && b.network != "host" {
+	// For sandbox/host modes, join the pre-configured CNI netns so gVisor's
+	// netstack has a real veth interface to route traffic through. A non-empty
+	// path is required: gVisor reads it from the OCI spec and calls setns(2).
+	// For none (default), include a fresh isolated namespace with no interfaces.
+	switch b.network {
+	case "sandbox", "host":
+		if b.netnsPath == "" {
+			return nil, fmt.Errorf("network=%q requires a pre-configured network namespace path", b.network)
+		}
+		namespaces = append(namespaces, specs.LinuxNamespace{
+			Type: specs.NetworkNamespace,
+			Path: b.netnsPath,
+		})
+	default:
 		namespaces = append(namespaces, specs.LinuxNamespace{Type: specs.NetworkNamespace})
 	}
 
