@@ -1,130 +1,323 @@
-basePath: /
-definitions:
-  api.ErrorResponse:
-    properties:
-      error:
-        example: 'image pull failed: not found'
-        type: string
-    type: object
-  api.RunRequest:
-    properties:
-      cmd:
-        example:
-        - python -c 'print("hello world")'
-        items:
-          type: string
-        minItems: 1
-        type: array
-      cwd:
-        example: /app
-        type: string
-      env:
-        example:
-        - HOME=/root
-        items:
-          type: string
-        type: array
-      image:
-        example: python:3.12-slim
-        type: string
-      limits:
-        $ref: '#/definitions/config.ResourceLimits'
-    required:
-    - cmd
-    - image
-    type: object
-  api.RunResponse:
-    properties:
-      exit_code:
-        example: 0
-        type: integer
-      stderr:
-        example: ""
-        type: string
-      stdout:
-        example: |
-          hello world
-        type: string
-      wall_ms:
-        example: 342
-        type: integer
-    type: object
-  config.ResourceLimits:
-    properties:
-      cpu_cores:
-        type: number
-      memory_mb:
-        type: integer
-      nofile:
-        type: integer
-      pids_limit:
-        type: integer
-      wall_clock_secs:
-        type: integer
-    type: object
-host: localhost:8080
+openapi: 3.0.3
 info:
-  contact: {}
-  description: 'Sandbox execution service: pull any container image, run arbitrary
-    commands inside gVisor.'
+  title: Boxer API
+  description: |
+    Sandbox execution service: pull any container image, run arbitrary commands
+    inside [gVisor](https://gvisor.dev/), and get back stdout, stderr, exit code,
+    and wall time.
+
+    ## Workflow
+
+    1. Optionally **upload** files via `POST /files`
+    2. **Execute** a command via `POST /run`, referencing uploaded files by path
+    3. Optionally **download** output files written to `/output/` inside the container
+  version: "1.0"
   license:
     name: MIT
-  title: Boxer API
-  version: "1.0"
+    url: https://github.com/theonekeyg/boxer/blob/main/LICENSE
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: execution
+    description: Run commands inside sandboxed containers
+  - name: files
+    description: Upload input files and download output files
+  - name: system
+    description: Service health
+
 paths:
   /healthz:
     get:
-      description: 'Returns {"ok": true} when the service is running'
-      produces:
-      - application/json
+      summary: Health check
+      description: 'Returns `{"ok": true}` when the service is running.'
+      tags: [system]
       responses:
         "200":
-          description: OK
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                    example: true
+
+  /files:
+    post:
+      summary: Upload a file
+      description: |
+        Upload a file to the Boxer file store. The file can then be referenced
+        by its `path` in a `POST /run` request — it will be bind-mounted
+        read-only at `/<path>` inside the container.
+      tags: [files]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, path]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: File content
+                path:
+                  type: string
+                  description: Relative destination path (e.g. `workspace/script.py`)
+                  example: workspace/script.py
+      responses:
+        "200":
+          description: File stored successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+                    example: workspace/script.py
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "413":
+          description: Upload exceeds configured limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    get:
+      summary: Download a file
+      description: |
+        Download any file from the store by its relative path.
+
+        To retrieve output files written by a container to `/output/`, use the
+        path pattern `output/<exec_id>/<filename>` (returned in the `POST /run`
+        response as `exec_id`).
+      tags: [files]
+      parameters:
+        - name: path
+          in: query
+          required: true
+          description: Relative file path
           schema:
-            additionalProperties:
-              type: boolean
-            type: object
-      summary: Health check
-      tags:
-      - system
+            type: string
+            example: output/boxer-abc123/result.json
+      responses:
+        "200":
+          description: File contents
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: File not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /run:
     post:
-      consumes:
-      - application/json
-      description: |-
-        Pulls the image if not cached, then runs the command inside a
-        gVisor sandbox. Returns stdout, stderr, exit code, and wall time.
-      parameters:
-      - description: Execution parameters
-        in: body
-        name: request
+      summary: Execute a command in a sandboxed container
+      description: |
+        Pulls the image if not already cached, constructs a hardened OCI bundle,
+        and runs the command inside a gVisor sandbox.
+
+        **Files:** Pass paths previously uploaded via `POST /files` in the `files`
+        array. Each file is bind-mounted read-only at `/<path>` inside the container.
+
+        **Output:** Any file written to `/output/` inside the container is captured
+        automatically. Retrieve it with `GET /files?path=output/<exec_id>/<filename>`.
+
+        **Limits:** Per-request limits override the server defaults.
+      tags: [execution]
+      requestBody:
         required: true
-        schema:
-          $ref: '#/definitions/api.RunRequest'
-      produces:
-      - application/json
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RunRequest"
+            examples:
+              hello_world:
+                summary: Hello world
+                value:
+                  image: python:3.12-slim
+                  cmd: ["python3", "-c", "print('hello world')"]
+              with_limits:
+                summary: With resource limits
+                value:
+                  image: python:3.12-slim
+                  cmd: ["python3", "/workspace/script.py"]
+                  files: ["workspace/script.py"]
+                  limits:
+                    cpu_cores: 0.5
+                    memory_mb: 128
+                    wall_clock_secs: 10
+              with_env:
+                summary: Custom env and working directory
+                value:
+                  image: node:20-slim
+                  cmd: ["node", "-e", "console.log(process.env.MSG)"]
+                  env: ["MSG=hello from boxer"]
+                  cwd: /app
       responses:
         "200":
-          description: Command completed (any exit code)
-          schema:
-            $ref: '#/definitions/api.RunResponse'
+          description: Command completed (any exit code is valid — check `exit_code`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunResponse"
         "400":
-          description: Invalid request body
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
+          $ref: "#/components/responses/BadRequest"
         "408":
           description: Wall-clock timeout exceeded
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "execution timed out after 30000ms"
         "500":
-          description: Internal error (pull failed, runsc error)
-          schema:
-            $ref: '#/definitions/api.ErrorResponse'
+          $ref: "#/components/responses/InternalError"
         "507":
-          description: Output exceeded limit
+          description: stdout or stderr exceeded the configured output limit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "output limit exceeded: limit=10485760 bytes"
+
+components:
+  schemas:
+    RunRequest:
+      type: object
+      required: [image, cmd]
+      properties:
+        image:
+          type: string
+          description: OCI image reference (pulled and cached on first use)
+          example: python:3.12-slim
+        cmd:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          description: Command and arguments to execute
+          example: ["python3", "-c", "print('hello world')"]
+        env:
+          type: array
+          items:
+            type: string
+          description: Additional environment variables in `KEY=VALUE` format
+          example: ["HOME=/root", "PYTHONPATH=/app"]
+        cwd:
+          type: string
+          description: Working directory inside the container (default `/`)
+          example: /app
+        files:
+          type: array
+          items:
+            type: string
+          description: |
+            Paths of previously uploaded files to bind-mount read-only inside the
+            container at `/<path>`. Use `POST /files` to upload them first.
+          example: ["workspace/script.py", "workspace/data.json"]
+        network:
+          type: string
+          enum: [none, sandbox, host]
+          default: none
+          description: |
+            Network mode for the container:
+            - `none` — no network access (default, most secure)
+            - `sandbox` — isolated network namespace with internet access via NAT
+            - `host` — shares the host network namespace
+        persist:
+          type: boolean
+          default: false
+          description: |
+            If `true`, uploaded input files and output files are kept in the
+            store after the run. If `false` (default), they are deleted.
+        limits:
+          $ref: "#/components/schemas/ResourceLimits"
+
+    ResourceLimits:
+      type: object
+      description: Per-execution resource limits. Omitted fields use server defaults.
+      properties:
+        cpu_cores:
+          type: number
+          format: float
+          description: CPU limit in fractional cores
+          example: 1.0
+        memory_mb:
+          type: integer
+          description: Memory limit in megabytes
+          example: 256
+        wall_clock_secs:
+          type: integer
+          description: Maximum wall-clock execution time in seconds
+          example: 30
+        pids_limit:
+          type: integer
+          description: Maximum number of processes/threads
+          example: 64
+        nofile:
+          type: integer
+          description: Maximum open file descriptors
+          example: 256
+
+    RunResponse:
+      type: object
+      properties:
+        exec_id:
+          type: string
+          description: Unique execution identifier (use to retrieve output files)
+          example: boxer-a1b2c3d4
+        exit_code:
+          type: integer
+          description: Process exit code (0 = success)
+          example: 0
+        stdout:
+          type: string
+          description: Captured standard output
+          example: "hello world\n"
+        stderr:
+          type: string
+          description: Captured standard error
+          example: ""
+        wall_ms:
+          type: integer
+          description: Wall-clock execution time in milliseconds
+          example: 342
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "image pull failed: not found"
+
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/json:
           schema:
-            $ref: '#/definitions/api.ErrorResponse'
-      summary: Execute a command in a sandboxed container
-      tags:
-      - execution
-swagger: "2.0"
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
