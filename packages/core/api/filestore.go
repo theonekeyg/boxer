@@ -69,29 +69,31 @@ func (s *FileStore) Delete(path string) error {
 	return nil
 }
 
-// CaptureOutput copies all files from srcDir into <root>/output/<execID>/.
-// The destination directory is created lazily — if the container writes no
-// files to /output/, no directory is created in the file store.
+// CaptureOutput copies all files from srcDir (recursively) into <root>/output/<execID>/,
+// preserving the directory structure. The destination directory is created lazily —
+// if the container writes no files to /output/, no directory is created in the file store.
 func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 	destDir := filepath.Join(s.root, "output", execID)
-	entries, err := os.ReadDir(srcDir)
-	if err != nil {
-		return fmt.Errorf("read output dir: %w", err)
-	}
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
+	return filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("walk output dir: %w", err)
 		}
-		if err := os.MkdirAll(destDir, 0o755); err != nil { //nolint:gosec // 0o755 required for output directory
+		if d.IsDir() {
+			return nil
+		}
+		rel, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return fmt.Errorf("rel path: %w", err)
+		}
+		dst := filepath.Join(destDir, rel)
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil { //nolint:gosec // 0o755 required for output directory
 			return fmt.Errorf("create output dir: %w", err)
 		}
-		src := filepath.Join(srcDir, entry.Name())
-		dst := filepath.Join(destDir, entry.Name())
-		if err := copyFile(src, dst); err != nil {
-			return fmt.Errorf("copy %s: %w", entry.Name(), err)
+		if err := copyFile(path, dst); err != nil {
+			return fmt.Errorf("copy %s: %w", rel, err)
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // PurgeOutput removes the output directory for the given execution ID.
