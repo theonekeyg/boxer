@@ -80,9 +80,13 @@ Key fields in `config.json`:
 | `platform` | `systrap` | gVisor platform: `systrap`, `ptrace`, or `kvm` |
 | `listen_addr` | `:8080` | HTTP listen address |
 | `ignore_cgroups` | `false` | Skip cgroup setup (useful for rootless/dev) |
+| `output_limit_bytes` | `10485760` | Maximum bytes captured per stream (stdout/stderr) |
+| `upload_limit_bytes` | `10485760` | Maximum multipart upload size buffered in RAM |
 | `defaults.cpu_cores` | `1.0` | Default CPU limit per execution |
 | `defaults.memory_mb` | `256` | Default memory limit (MB) |
 | `defaults.wall_clock_secs` | `30` | Default execution timeout |
+| `defaults.pids_limit` | `64` | Default max processes per execution |
+| `defaults.nofile` | `256` | Default max open file descriptors per execution |
 
 Per-request limits in `POST /run` override the configured defaults.
 
