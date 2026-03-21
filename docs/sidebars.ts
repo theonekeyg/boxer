@@ -5,6 +5,15 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
+      label: 'Guides',
+      items: [
+        'guides/files',
+        'guides/network',
+        'guides/resource-limits',
+      ],
+    },
+    {
+      type: 'category',
       label: 'Python SDK',
       items: ['sdk/python'],
     },
