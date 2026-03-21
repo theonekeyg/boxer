@@ -81,6 +81,12 @@ definitions:
         example: 342
         type: integer
     type: object
+  api.UploadResponse:
+    properties:
+      path:
+        example: workspace/script.py
+        type: string
+    type: object
   config.ResourceLimits:
     properties:
       cpu_cores:
@@ -152,9 +158,7 @@ paths:
         "200":
           description: Stored path
           schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.UploadResponse'
         "400":
           description: Missing or invalid form fields
           schema:

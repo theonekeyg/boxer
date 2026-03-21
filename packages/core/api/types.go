@@ -29,6 +29,11 @@ type RunResponse struct {
 	WallMs   int64  `json:"wall_ms"   example:"342"`
 }
 
+// UploadResponse is returned by POST /files on success.
+type UploadResponse struct {
+	Path string `json:"path" example:"workspace/script.py"`
+}
+
 // ErrorResponse is returned on all non-200 responses.
 type ErrorResponse struct {
 	Error string `json:"error" example:"image pull failed: not found"`

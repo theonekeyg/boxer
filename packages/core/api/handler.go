@@ -49,7 +49,7 @@ func (h *Handler) Health(c *gin.Context) {
 // @Produce     json
 // @Param       file  formData  file    true  "File content"
 // @Param       path  formData  string  true  "Relative destination path (e.g. workspace/script.py)"
-// @Success     200   {object}  map[string]string  "Stored path"
+// @Success     200   {object}  UploadResponse     "Stored path"
 // @Failure     400   {object}  ErrorResponse      "Missing or invalid form fields"
 // @Failure     413   {object}  ErrorResponse      "Upload exceeds configured limit"
 // @Failure     500   {object}  ErrorResponse      "Internal error"

@@ -87,10 +87,7 @@ const docTemplate = `{
                     "200": {
                         "description": "Stored path",
                         "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
+                            "$ref": "#/definitions/api.UploadResponse"
                         }
                     },
                     "400": {
@@ -296,6 +293,15 @@ const docTemplate = `{
                 "wall_ms": {
                     "type": "integer",
                     "example": 342
+                }
+            }
+        },
+        "api.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "example": "workspace/script.py"
                 }
             }
         },
