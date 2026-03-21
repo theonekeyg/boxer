@@ -20,5 +20,5 @@ export interface RunOptions {
   limits?: ResourceLimits;
   files?: string[];
   persist?: boolean;
-  network?: string;
+  network?: "none" | "sandbox" | "host";
 }

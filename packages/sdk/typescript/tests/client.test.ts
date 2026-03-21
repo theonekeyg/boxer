@@ -28,7 +28,7 @@ needsServer("BoxerClient (integration)", () => {
 
   it("upload file and run with files param", async () => {
     const script = new TextEncoder().encode("print('from file')\n");
-    const remote = "test_input.py";
+    const remote = `test_input_${Date.now()}.py`;
     await client.uploadFile(remote, script);
 
     const result = await client.run(IMAGE, ["python3", `/${remote}`], { files: [remote] });
@@ -40,7 +40,7 @@ needsServer("BoxerClient (integration)", () => {
     const script = new TextEncoder().encode(
       "import os; os.makedirs('/output', exist_ok=True); open('/output/result.txt', 'w').write('hello output')\n",
     );
-    const remote = "write_output.py";
+    const remote = `write_output_${Date.now()}.py`;
     await client.uploadFile(remote, script);
 
     const result = await client.run(IMAGE, ["python3", `/${remote}`], {

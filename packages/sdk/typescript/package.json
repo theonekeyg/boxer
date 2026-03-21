@@ -5,6 +5,7 @@
   "license": "Apache-2.0",
   "author": "Alexander Kolupaev <theonekeyg@gmail.com>",
   "homepage": "https://github.com/theonekeyg/boxer",
+  "engines": { "node": ">=18" },
   "type": "module",
   "exports": {
     ".": {

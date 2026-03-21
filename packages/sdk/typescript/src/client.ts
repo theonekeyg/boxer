@@ -45,25 +45,34 @@ function limitsToObject(limits: ResourceLimits): Record<string, unknown> {
 }
 
 function parseRunResult(data: unknown): RunResult {
-  if (
-    data == null ||
-    typeof data !== "object" ||
-    !("exec_id" in data) ||
-    !("exit_code" in data) ||
-    !("stdout" in data) ||
-    !("stderr" in data) ||
-    !("wall_ms" in data)
-  ) {
-    throw new Error("Unexpected response from Boxer API: missing required fields");
+  if (data == null || typeof data !== "object" || Array.isArray(data)) {
+    throw new Error("Unexpected response from Boxer API: expected an object");
   }
 
   const d = data as Record<string, unknown>;
+
+  if (typeof d.exec_id !== "string") {
+    throw new Error("Unexpected response from Boxer API: exec_id must be a string");
+  }
+  if (typeof d.exit_code !== "number" || !Number.isFinite(d.exit_code)) {
+    throw new Error("Unexpected response from Boxer API: exit_code must be a finite number");
+  }
+  if (typeof d.stdout !== "string") {
+    throw new Error("Unexpected response from Boxer API: stdout must be a string");
+  }
+  if (typeof d.stderr !== "string") {
+    throw new Error("Unexpected response from Boxer API: stderr must be a string");
+  }
+  if (typeof d.wall_ms !== "number" || !Number.isFinite(d.wall_ms)) {
+    throw new Error("Unexpected response from Boxer API: wall_ms must be a finite number");
+  }
+
   return {
-    exec_id: String(d.exec_id),
-    exit_code: Number(d.exit_code),
-    stdout: String(d.stdout),
-    stderr: String(d.stderr),
-    wall_ms: Number(d.wall_ms),
+    exec_id: d.exec_id,
+    exit_code: d.exit_code,
+    stdout: d.stdout,
+    stderr: d.stderr,
+    wall_ms: d.wall_ms,
   };
 }
 
@@ -96,6 +105,7 @@ export class BoxerClient {
   }
 
   async run(image: string, cmd: string[], options: RunOptions = {}): Promise<RunResult> {
+    if (!cmd.length) throw new Error("cmd must be a non-empty array");
     const body = buildRunBody(image, cmd, options);
     const res = await this.fetch("/run", {
       method: "POST",

@@ -27,4 +27,4 @@ npm publish --dry-run
 
 - Bump `version` in `package.json` before each release — npm does not allow overwriting existing versions.
 - API tokens can be created at: Account → Access Tokens on npmjs.com. Use an **Automation** token for CI.
-- To publish with a token non-interactively: `NODE_AUTH_TOKEN=your-token npm publish --access public`.
+- To publish non-interactively (e.g. in CI), ensure `NODE_AUTH_TOKEN` is injected securely via your CI secrets or environment manager, then run `npm publish --access public`. Avoid inlining tokens in shell commands to prevent them from appearing in shell history.

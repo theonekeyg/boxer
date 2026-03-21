@@ -22,7 +22,7 @@ const result = await client.run(
   ["python3", "-c", "print('hello world')"],
 );
 console.log(result.stdout);    // hello world
-console.log(result.exitCode);  // 0
+console.log(result.exit_code);  // 0
 console.log(result.wall_ms);   // e.g. 312
 ```
 
@@ -76,7 +76,7 @@ import { readFile } from "node:fs/promises";
 const pyScript = await readFile("script.py");
 await client.uploadFile("script.py", pyScript);
 
-const result = await client.run(
+const pyResult = await client.run(
   "python:3.12-slim",
   ["python3", "/script.py"],
   { files: ["script.py"] },
@@ -86,7 +86,7 @@ const result = await client.run(
 const jsScript = await readFile("app.js");
 await client.uploadFile("app.js", jsScript);
 
-const result = await client.run(
+const jsResult = await client.run(
   "node:20-slim",
   ["node", "/app.js"],
   { files: ["app.js"] },
@@ -96,7 +96,7 @@ const result = await client.run(
 const plScript = await readFile("hello.pl");
 await client.uploadFile("hello.pl", plScript);
 
-const result = await client.run(
+const plResult = await client.run(
   "perl:5.38-slim",
   ["perl", "/hello.pl"],
   { files: ["hello.pl"] },

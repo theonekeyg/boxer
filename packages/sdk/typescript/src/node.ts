@@ -42,18 +42,16 @@ async function uploadDir(
 ): Promise<void> {
   const entries = await readdir(currentDir, { withFileTypes: true });
 
-  await Promise.all(
-    entries.map(async (entry) => {
-      const fullPath = join(currentDir, entry.name);
-      if (entry.isDirectory()) {
-        await uploadDir(client, rootDir, fullPath, prefix, uploaded);
-      } else if (entry.isFile()) {
-        const rel = relative(rootDir, fullPath);
-        const dest = `${prefix}/${rel.split("\\").join("/")}`;
-        const content = await readFile(fullPath);
-        await client.uploadFile(dest, content);
-        uploaded.push(dest);
-      }
-    }),
-  );
+  for (const entry of entries) {
+    const fullPath = join(currentDir, entry.name);
+    if (entry.isDirectory()) {
+      await uploadDir(client, rootDir, fullPath, prefix, uploaded);
+    } else if (entry.isFile()) {
+      const rel = relative(rootDir, fullPath);
+      const dest = `${prefix}/${rel.split("\\").join("/")}`;
+      const content = await readFile(fullPath);
+      await client.uploadFile(dest, content);
+      uploaded.push(dest);
+    }
+  }
 }
