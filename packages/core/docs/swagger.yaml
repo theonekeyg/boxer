@@ -10,7 +10,9 @@ definitions:
     properties:
       cmd:
         example:
-        - python -c 'print("hello world")'
+        - python3
+        - -c
+        - print('hello world')
         items:
           type: string
         minItems: 1
@@ -21,6 +23,17 @@ definitions:
       env:
         example:
         - HOME=/root
+        - PYTHONPATH=/app
+        items:
+          type: string
+        type: array
+      files:
+        description: |-
+          Files lists relative paths of files previously uploaded via POST /files.
+          Each file is bind-mounted read-only at /<path> inside the container.
+        example:
+        - workspace/script.py
+        - workspace/data.json
         items:
           type: string
         type: array
@@ -29,12 +42,31 @@ definitions:
         type: string
       limits:
         $ref: '#/definitions/config.ResourceLimits'
+      network:
+        default: none
+        description: |-
+          Network sets the container network mode: none (default, no access),
+          sandbox (isolated NAT namespace), or host (shared host network).
+        enum:
+        - none
+        - sandbox
+        - host
+        example: none
+        type: string
+      persist:
+        description: |-
+          Persist keeps uploaded input files and captured output files after the run.
+          Default false: all files are deleted once the response is returned.
+        type: boolean
     required:
     - cmd
     - image
     type: object
   api.RunResponse:
     properties:
+      exec_id:
+        example: boxer-abc123
+        type: string
       exit_code:
         example: 0
         type: integer
@@ -72,6 +104,72 @@ info:
   title: Boxer API
   version: "1.0"
 paths:
+  /files:
+    get:
+      description: Download any file by its relative path. To retrieve output files
+        written by a container to /output/, use the path pattern output/<exec_id>/<filename>.
+      parameters:
+      - description: Relative file path (e.g. output/boxer-abc123/result.json)
+        in: query
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: File contents
+        "400":
+          description: Missing or invalid path
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "404":
+          description: File not found
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Download a file from the file store
+      tags:
+      - files
+    post:
+      consumes:
+      - multipart/form-data
+      description: Multipart upload. The stored file can be referenced by its path
+        in POST /run — it is bind-mounted read-only at /<path> inside the container.
+      parameters:
+      - description: File content
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Relative destination path (e.g. workspace/script.py)
+        in: formData
+        name: path
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Stored path
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Missing or invalid form fields
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "413":
+          description: Upload exceeds configured limit
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/api.ErrorResponse'
+      summary: Upload a file to the file store
+      tags:
+      - files
   /healthz:
     get:
       description: 'Returns {"ok": true} when the service is running'
@@ -92,8 +190,9 @@ paths:
       consumes:
       - application/json
       description: |-
-        Pulls the image if not cached, then runs the command inside a
-        gVisor sandbox. Returns stdout, stderr, exit code, and wall time.
+        Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
+        Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /<path> inside the container.
+        Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/<exec_id>/<filename>.
       parameters:
       - description: Execution parameters
         in: body
@@ -105,11 +204,11 @@ paths:
       - application/json
       responses:
         "200":
-          description: Command completed (any exit code)
+          description: Command completed (any exit code is valid — check exit_code)
           schema:
             $ref: '#/definitions/api.RunResponse'
         "400":
-          description: Invalid request body
+          description: Invalid request body or file not found
           schema:
             $ref: '#/definitions/api.ErrorResponse'
         "408":
@@ -117,11 +216,11 @@ paths:
           schema:
             $ref: '#/definitions/api.ErrorResponse'
         "500":
-          description: Internal error (pull failed, runsc error)
+          description: Internal error (image pull failed, runsc error)
           schema:
             $ref: '#/definitions/api.ErrorResponse'
         "507":
-          description: Output exceeded limit
+          description: stdout or stderr exceeded the configured output limit
           schema:
             $ref: '#/definitions/api.ErrorResponse'
       summary: Execute a command in a sandboxed container

@@ -43,15 +43,16 @@ func (h *Handler) Health(c *gin.Context) {
 
 // UploadFile godoc
 // @Summary     Upload a file to the file store
-// @Description Multipart upload; form fields: file (bytes) + path (relative path)
+// @Description Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /<path> inside the container.
 // @Tags        files
 // @Accept      multipart/form-data
 // @Produce     json
-// @Param       file  formData  file    true  "File to upload"
+// @Param       file  formData  file    true  "File content"
 // @Param       path  formData  string  true  "Relative destination path (e.g. workspace/script.py)"
-// @Success     200   {object}  map[string]string
-// @Failure     400   {object}  ErrorResponse
-// @Failure     500   {object}  ErrorResponse
+// @Success     200   {object}  map[string]string  "Stored path"
+// @Failure     400   {object}  ErrorResponse      "Missing or invalid form fields"
+// @Failure     413   {object}  ErrorResponse      "Upload exceeds configured limit"
+// @Failure     500   {object}  ErrorResponse      "Internal error"
 // @Router      /files [post]
 func (h *Handler) UploadFile(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, int64(h.cfg.UploadLimitBytes))
@@ -92,13 +93,13 @@ func (h *Handler) UploadFile(c *gin.Context) {
 
 // DownloadFile godoc
 // @Summary     Download a file from the file store
-// @Description Download any file from the store by its relative path (including output/<exec_id>/...)
+// @Description Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/<exec_id>/<filename>.
 // @Tags        files
 // @Produce     application/octet-stream
-// @Param       path  query  string  true  "Relative file path"
-// @Success     200
-// @Failure     400  {object}  ErrorResponse
-// @Failure     404  {object}  ErrorResponse
+// @Param       path  query  string  true  "Relative file path (e.g. output/boxer-abc123/result.json)"
+// @Success     200   "File contents"
+// @Failure     400   {object}  ErrorResponse  "Missing or invalid path"
+// @Failure     404   {object}  ErrorResponse  "File not found"
 // @Router      /files [get]
 func (h *Handler) DownloadFile(c *gin.Context) {
 	path := c.Query("path")
@@ -123,17 +124,18 @@ func (h *Handler) DownloadFile(c *gin.Context) {
 
 // Run godoc
 // @Summary     Execute a command in a sandboxed container
-// @Description Pulls the image if not cached, then runs the command inside a
-// @Description gVisor sandbox. Returns stdout, stderr, exit code, and wall time.
+// @Description Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
+// @Description Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /<path> inside the container.
+// @Description Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/<exec_id>/<filename>.
 // @Tags        execution
 // @Accept      json
 // @Produce     json
-// @Param       request  body      RunRequest    true  "Execution parameters"
-// @Success     200      {object}  RunResponse         "Command completed (any exit code)"
-// @Failure     400      {object}  ErrorResponse       "Invalid request body"
-// @Failure     408      {object}  ErrorResponse       "Wall-clock timeout exceeded"
-// @Failure     500      {object}  ErrorResponse       "Internal error (pull failed, runsc error)"
-// @Failure     507      {object}  ErrorResponse       "Output exceeded limit"
+// @Param       request  body      RunRequest    true   "Execution parameters"
+// @Success     200      {object}  RunResponse          "Command completed (any exit code is valid — check exit_code)"
+// @Failure     400      {object}  ErrorResponse        "Invalid request body or file not found"
+// @Failure     408      {object}  ErrorResponse        "Wall-clock timeout exceeded"
+// @Failure     500      {object}  ErrorResponse        "Internal error (image pull failed, runsc error)"
+// @Failure     507      {object}  ErrorResponse        "stdout or stderr exceeded the configured output limit"
 // @Router      /run [post]
 func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers all execution lifecycle stages in sequence
 	var req RunRequest

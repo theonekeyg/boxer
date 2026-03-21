@@ -4,14 +4,20 @@ import "boxer/config"
 
 // RunRequest is the JSON body for POST /run.
 type RunRequest struct {
-	Image   string                 `json:"image"   binding:"required"  example:"python:3.12-slim"`
-	Cmd     []string               `json:"cmd"     binding:"required,min=1" example:"python -c 'print(\"hello world\")'"`
-	Env     []string               `json:"env"     example:"HOME=/root"`
+	Image   string                 `json:"image"   binding:"required"       example:"python:3.12-slim"`
+	Cmd     []string               `json:"cmd"     binding:"required,min=1" example:"python3,-c,print('hello world')"`
+	Env     []string               `json:"env"     example:"HOME=/root,PYTHONPATH=/app"`
 	Cwd     string                 `json:"cwd"     example:"/app"`
 	Limits  *config.ResourceLimits `json:"limits"`
-	Files   []string               `json:"files"`   // relative paths of uploaded files to bind-mount read-only
-	Persist bool                   `json:"persist"` // keep input files after run (default false)
-	Network string                 `json:"network"` // network mode: none (default), sandbox, host
+	// Files lists relative paths of files previously uploaded via POST /files.
+	// Each file is bind-mounted read-only at /<path> inside the container.
+	Files   []string `json:"files"   example:"workspace/script.py,workspace/data.json"`
+	// Persist keeps uploaded input files and captured output files after the run.
+	// Default false: all files are deleted once the response is returned.
+	Persist bool `json:"persist"`
+	// Network sets the container network mode: none (default, no access),
+	// sandbox (isolated NAT namespace), or host (shared host network).
+	Network string `json:"network" enums:"none,sandbox,host" default:"none" example:"none"`
 }
 
 // RunResponse is the JSON body returned for a completed execution.

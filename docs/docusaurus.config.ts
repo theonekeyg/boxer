@@ -34,7 +34,7 @@ const config: Config = {
     [
       'redocusaurus',
       {
-        specs: [{spec: 'static/swagger.yaml', route: '/api/'}],
+        specs: [{spec: '../packages/core/docs/swagger.yaml', route: '/api/'}],
         theme: {primaryColor: '#1a73e8'},
       } satisfies Redocusaurus.PresetEntry,
     ],
