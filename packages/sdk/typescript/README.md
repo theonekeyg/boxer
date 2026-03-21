@@ -145,7 +145,7 @@ await client.uploadFile("compute.py", script);
 const result = await client.run(
   "python:3.12-slim",
   ["python3", "/compute.py"],
-  { files: ["compute.py"] },
+  { files: ["compute.py"], persist: true },
 );
 
 // Download the file the container wrote
