@@ -8,6 +8,10 @@ export class BoxerError extends Error {
   }
 }
 
+export class BoxerValidationError extends BoxerError {
+  override name = "BoxerValidationError";
+}
+
 export class BoxerAPIError extends BoxerError {
   override name = "BoxerAPIError";
 

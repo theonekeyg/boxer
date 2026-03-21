@@ -1,4 +1,4 @@
-import { BoxerAPIError, BoxerError, BoxerOutputLimitError, BoxerTimeoutError } from "./errors.js";
+import { BoxerAPIError, BoxerOutputLimitError, BoxerTimeoutError, BoxerValidationError } from "./errors.js";
 import type { ResourceLimits, RunOptions, RunResult } from "./types.js";
 
 export interface BoxerClientOptions {
@@ -119,7 +119,7 @@ export class BoxerClient {
   }
 
   async run(image: string, cmd: string[], options: RunOptions = {}): Promise<RunResult> {
-    if (!cmd.length) throw new BoxerError("cmd must be a non-empty array");
+    if (!cmd.length) throw new BoxerValidationError("cmd must be a non-empty array");
     const body = buildRunBody(image, cmd, options);
     const res = await this.fetch("/run", {
       method: "POST",
