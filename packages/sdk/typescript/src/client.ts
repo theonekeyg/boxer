@@ -116,7 +116,7 @@ export class BoxerClient {
   }
 
   async run(image: string, cmd: string[], options: RunOptions = {}): Promise<RunResult> {
-    if (!cmd.length) throw new Error("cmd must be a non-empty array");
+    if (!cmd.length) throw new BoxerAPIError("cmd must be a non-empty array", 0);
     const body = buildRunBody(image, cmd, options);
     const res = await this.fetch("/run", {
       method: "POST",
