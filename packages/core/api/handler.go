@@ -88,7 +88,7 @@ func (h *Handler) UploadFile(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"path": path})
+	c.JSON(http.StatusOK, UploadResponse{Path: path})
 }
 
 // DownloadFile godoc
