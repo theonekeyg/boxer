@@ -139,7 +139,7 @@ export class BoxerClient {
     } else {
       blob = new Blob([content], { type: "application/octet-stream" });
     }
-    form.append("file", blob, remotePath.split("/").pop() ?? "file");
+    form.append("file", blob, remotePath.split("/").pop() || "file");
 
     const res = await this.fetch("/files", { method: "POST", body: form });
     await raiseForStatus(res);
