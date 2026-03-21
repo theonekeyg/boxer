@@ -228,16 +228,33 @@ func TestBuild_Namespaces(t *testing.T) {
 	}
 }
 
-func TestBuild_NetworkSandbox_OmitsNetworkNamespace(t *testing.T) {
+func TestBuild_NetworkSandboxHost_RequiresNetNSPath(t *testing.T) {
 	for _, mode := range []string{"sandbox", "host"} {
-		spec, err := baseBuilder().WithNetwork(mode).Build()
+		_, err := baseBuilder().WithNetwork(mode).Build()
+		if err == nil {
+			t.Errorf("network=%s: expected error when netnsPath is empty", mode)
+		}
+	}
+}
+
+func TestBuild_NetworkSandboxHost_SetsNetNSPath(t *testing.T) {
+	const fakePath = "/var/run/netns/boxer-test-123"
+	for _, mode := range []string{"sandbox", "host"} {
+		spec, err := baseBuilder().WithNetwork(mode).WithNetworkNamespacePath(fakePath).Build()
 		if err != nil {
 			t.Fatalf("network=%s: %v", mode, err)
 		}
+		found := false
 		for _, ns := range spec.Linux.Namespaces {
 			if ns.Type == specs.NetworkNamespace {
-				t.Errorf("network=%s: expected no NetworkNamespace in spec", mode)
+				found = true
+				if ns.Path != fakePath {
+					t.Errorf("network=%s: expected NetworkNamespace.Path=%q, got %q", mode, fakePath, ns.Path)
+				}
 			}
+		}
+		if !found {
+			t.Errorf("network=%s: NetworkNamespace entry missing from spec", mode)
 		}
 	}
 }

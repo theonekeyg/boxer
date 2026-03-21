@@ -3,6 +3,8 @@ module boxer
 go 1.25.4
 
 require (
+	github.com/containernetworking/cni v1.3.0
+	github.com/containernetworking/plugins v1.9.1
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/gin-gonic/gin v1.10.0
 	github.com/google/go-containerregistry v0.20.3
@@ -82,6 +84,8 @@ require (
 	github.com/containerd/errdefs v1.0.0 // indirect
 	github.com/containerd/errdefs/pkg v0.3.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.16.3 // indirect
+	github.com/containernetworking/cni v1.3.0
+	github.com/containernetworking/plugins v1.9.1
 	github.com/curioswitch/go-reassign v0.3.0 // indirect
 	github.com/daixiang0/gci v0.13.7 // indirect
 	github.com/dave/dst v0.27.3 // indirect
