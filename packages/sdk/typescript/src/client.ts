@@ -113,13 +113,14 @@ export class BoxerClient {
     // caller's body read and aborts a stalled stream if the deadline is exceeded
   }
 
+  /**
+   * Returns `true` if the server responds with a 2xx status, `false` for non-OK responses.
+   * Network-level failures (connection refused, DNS error, timeout) propagate as exceptions
+   * so callers can distinguish between "server is up but unhealthy" and "server is unreachable".
+   */
   async health(): Promise<boolean> {
-    try {
-      const res = await this.fetch("/healthz");
-      return res.ok;
-    } catch {
-      return false;
-    }
+    const res = await this.fetch("/healthz");
+    return res.ok;
   }
 
   async run(image: string, cmd: string[], options: RunOptions = {}): Promise<RunResult> {
