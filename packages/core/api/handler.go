@@ -195,7 +195,7 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 			})
 			return
 		}
-		netSetup, nsErr := sandbox.SetupNetwork(execID)
+		netSetup, nsErr := sandbox.SetupNetwork(execID, h.cfg.ResolveDNSServers())
 		if nsErr != nil {
 			zerolog.Ctx(ctx).Error().Err(nsErr).Msg("network setup failed")
 			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "network setup failed: " + nsErr.Error()})

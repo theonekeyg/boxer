@@ -21,6 +21,6 @@ func (n *NetworkSetup) ResolvConfPath() string { return "" }
 func (n *NetworkSetup) Teardown() {}
 
 // SetupNetwork always returns an error on non-Linux platforms.
-func SetupNetwork(_ string) (*NetworkSetup, error) {
+func SetupNetwork(_ string, _ []string) (*NetworkSetup, error) {
 	return nil, errNotLinux
 }

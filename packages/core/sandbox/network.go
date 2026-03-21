@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -64,8 +65,12 @@ func (n *NetworkSetup) ResolvConfPath() string { return n.resolvConf }
 // 10.88.0.0/16 and a default route through the bridge, which NAT-masquerades
 // outbound traffic to the internet.
 //
+// dnsServers is written verbatim to the container's resolv.conf. Pass
+// cfg.ResolveDNSServers() — never pass host resolver addresses (e.g.
+// 127.0.0.53) since they are unreachable inside the container netns.
+//
 // Requires CAP_NET_ADMIN (running as root in practice).
-func SetupNetwork(execID string) (*NetworkSetup, error) {
+func SetupNetwork(execID string, dnsServers []string) (*NetworkSetup, error) {
 	// Validate execID before using it in a filesystem path. The regex rejects
 	// slashes; the explicit check rejects "..". Together they prevent path traversal.
 	if !execIDRe.MatchString(execID) || execID == ".." {
@@ -117,12 +122,8 @@ func SetupNetwork(execID string) (*NetworkSetup, error) {
 		return nil, err
 	}
 
-	// Write a resolv.conf for the container. We use the host's /etc/resolv.conf
-	// so container DNS respects host policies. An override path can be supplied
-	// via the SANDBOX_RESOLV_CONF environment variable. If both are unavailable
-	// we fall back to public DNS so the container remains functional.
 	resolvConf := netnsPath + ".resolv.conf"
-	if err := os.WriteFile(resolvConf, sandboxResolvContents(), 0o444); err != nil {
+	if err := os.WriteFile(resolvConf, buildResolvConf(dnsServers), 0o444); err != nil {
 		removeNetNS(netnsPath)
 		return nil, fmt.Errorf("write resolv.conf: %w", err)
 	}
@@ -315,18 +316,15 @@ func ensureNftablesRules() error {
 	return nil
 }
 
-// sandboxResolvContents returns DNS configuration for the container resolv.conf.
-// Priority: SANDBOX_RESOLV_CONF env → host /etc/resolv.conf → public DNS fallback.
-func sandboxResolvContents() []byte {
-	if path := os.Getenv("SANDBOX_RESOLV_CONF"); path != "" {
-		if data, err := os.ReadFile(path); err == nil { //nolint:gosec // path from trusted env var
-			return data
-		}
+// buildResolvConf constructs a resolv.conf file from the given nameserver list.
+func buildResolvConf(servers []string) []byte {
+	var b strings.Builder
+	for _, s := range servers {
+		b.WriteString("nameserver ")
+		b.WriteString(s)
+		b.WriteByte('\n')
 	}
-	if data, err := os.ReadFile("/etc/resolv.conf"); err == nil {
-		return data
-	}
-	return []byte("nameserver 8.8.8.8\nnameserver 8.8.4.4\n")
+	return []byte(b.String())
 }
 
 // ifname returns a 16-byte interface name suitable for nftables comparisons.

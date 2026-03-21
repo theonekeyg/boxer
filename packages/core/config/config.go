@@ -18,18 +18,17 @@ type BoxerConfig struct {
 	Home string `json:"home"`
 
 	RunscPath        string         `json:"runsc_path"`
-	Platform         string         `json:"platform"`            // systrap|ptrace|kvm
-	OutputLimitBytes int            `json:"output_limit_bytes"`  // bytes, per stream (sandbox stdout/stderr)
-	UploadLimitBytes int            `json:"upload_limit_bytes"`  // bytes, max multipart upload buffered in RAM
-	ListenAddr       string         `json:"listen_addr"`         // :8080
-	IgnoreCgroups    bool           `json:"ignore_cgroups"`      // skip cgroup setup (dev/rootless)
+	Platform         string         `json:"platform"`           // systrap|ptrace|kvm
+	OutputLimitBytes int            `json:"output_limit_bytes"` // bytes, per stream (sandbox stdout/stderr)
+	UploadLimitBytes int            `json:"upload_limit_bytes"` // bytes, max multipart upload buffered in RAM
+	ListenAddr       string         `json:"listen_addr"`        // :8080
+	IgnoreCgroups    bool           `json:"ignore_cgroups"`     // skip cgroup setup (dev/rootless)
+	DNSServers       []string       `json:"dns_servers"`        // nameservers written to container resolv.conf
 	Defaults         ResourceLimits `json:"defaults"`
-
 }
 
 // StateRoot is where per-execution temp directories are created.
 func (c *BoxerConfig) StateRoot() string { return filepath.Join(c.Home, "run") }
-
 
 // ImageStore is where unpacked image rootfs trees are cached.
 func (c *BoxerConfig) ImageStore() string { return filepath.Join(c.Home, "images") }
@@ -83,8 +82,8 @@ func defaultConfig() (BoxerConfig, error) {
 	wall := int64(30)
 	nofile := uint64(256)
 	return BoxerConfig{
-		Home:     home,
-		Platform: "systrap",
+		Home:             home,
+		Platform:         "systrap",
 		OutputLimitBytes: 10 * 1024 * 1024,
 		UploadLimitBytes: 10 * 1024 * 1024,
 		ListenAddr:       ":8080",
@@ -131,6 +130,17 @@ func Load() (*BoxerConfig, error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 	return &cfg, nil
+}
+
+// ResolveDNSServers returns the configured DNS servers, defaulting to public
+// resolvers if none are set. Containers must not use the host's resolv.conf
+// since it may point to a loopback address (e.g. systemd-resolved stub at
+// 127.0.0.53) that is unreachable inside an isolated network namespace.
+func (c *BoxerConfig) ResolveDNSServers() []string {
+	if len(c.DNSServers) > 0 {
+		return c.DNSServers
+	}
+	return []string{"8.8.8.8", "8.8.4.4"}
 }
 
 // ResolveLimits merges per-request overrides on top of the configured defaults.

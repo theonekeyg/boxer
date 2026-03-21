@@ -52,7 +52,7 @@ func TestSetupTeardown(t *testing.T) {
 
 	execID := "boxer-net-test-" + t.Name()
 
-	ns, err := SetupNetwork(execID)
+	ns, err := SetupNetwork(execID, []string{"8.8.8.8", "8.8.4.4"})
 	require.NoError(t, err)
 
 	path := ns.NetNSPath()
