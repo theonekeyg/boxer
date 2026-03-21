@@ -91,17 +91,21 @@ export class BoxerClient {
     this.timeout = options.timeout ?? 120_000;
   }
 
-  private async fetch(path: string, init: RequestInit = {}): Promise<Response> {
+  private async fetch(
+    path: string,
+    init: RequestInit = {},
+  ): Promise<[Response, AbortController]> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeout);
     // biome-ignore lint/suspicious/noExplicitAny: unref is Node-only
     (timer as any).unref?.();
 
     try {
-      return await fetch(`${this.baseUrl}${path}`, {
+      const res = await fetch(`${this.baseUrl}${path}`, {
         ...init,
         signal: controller.signal,
       });
+      return [res, controller];
     } catch (err) {
       clearTimeout(timer);
       if (controller.signal.aborted) {
@@ -113,13 +117,17 @@ export class BoxerClient {
     // caller's body read and aborts a stalled stream if the deadline is exceeded
   }
 
+  private timeoutError(path: string): BoxerTimeoutError {
+    return new BoxerTimeoutError(`Request to ${path} timed out after ${this.timeout}ms`, 0);
+  }
+
   /**
    * Returns `true` if the server responds with a 2xx status, `false` for non-OK responses.
    * Network-level failures (connection refused, DNS error, timeout) propagate as exceptions
    * so callers can distinguish between "server is up but unhealthy" and "server is unreachable".
    */
   async health(): Promise<boolean> {
-    const res = await this.fetch("/healthz");
+    const [res] = await this.fetch("/healthz");
     return res.ok;
   }
 
@@ -127,13 +135,18 @@ export class BoxerClient {
     if (!image) throw new BoxerValidationError("image must be a non-empty string");
     if (!cmd.length) throw new BoxerValidationError("cmd must be a non-empty array");
     const body = buildRunBody(image, cmd, options);
-    const res = await this.fetch("/run", {
+    const [res, controller] = await this.fetch("/run", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     await raiseForStatus(res);
-    return parseRunResult(await res.json());
+    try {
+      return parseRunResult(await res.json());
+    } catch (err) {
+      if (controller.signal.aborted) throw this.timeoutError("/run");
+      throw err;
+    }
   }
 
   async uploadFile(remotePath: string, content: Blob | Uint8Array | ArrayBuffer): Promise<void> {
@@ -151,14 +164,21 @@ export class BoxerClient {
     }
     // Strip trailing slash before extracting the filename so "output/" doesn't yield ""
     form.append("file", blob, remotePath.replace(/\/$/, "").split("/").pop() || "file");
-    const res = await this.fetch("/files", { method: "POST", body: form });
+    const [res] = await this.fetch("/files", { method: "POST", body: form });
     await raiseForStatus(res);
   }
 
   async downloadFile(path: string): Promise<Uint8Array> {
     if (!path) throw new BoxerValidationError("path must be a non-empty string");
-    const res = await this.fetch(`/files?${new URLSearchParams({ path }).toString()}`);
+    const [res, controller] = await this.fetch(
+      `/files?${new URLSearchParams({ path }).toString()}`,
+    );
     await raiseForStatus(res);
-    return new Uint8Array(await res.arrayBuffer());
+    try {
+      return new Uint8Array(await res.arrayBuffer());
+    } catch (err) {
+      if (controller.signal.aborted) throw this.timeoutError("/files");
+      throw err;
+    }
   }
 }
