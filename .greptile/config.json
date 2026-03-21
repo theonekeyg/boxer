@@ -1,4 +1,4 @@
 {
   "updateExistingSummaryComment": true,
-  "includeConfidenceScore": true
+  "confidenceScoreSection": { "included": true }
 }
