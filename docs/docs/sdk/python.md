@@ -97,6 +97,7 @@ result = client.run(
     image="python:3.12-slim",
     cmd=["python3", "/compute.py"],
     files=["compute.py"],
+    persist=True,
 )
 
 data = client.download_file(f"output/{result.exec_id}/result.json")
@@ -145,7 +146,7 @@ asyncio.run(main())
 ## Error Handling
 
 ```python
-from boxer import BoxerAPIError, BoxerTimeoutError, BoxerOutputLimitError
+from boxer import BoxerAPIError, BoxerTimeoutError, BoxerOutputLimitError, ResourceLimits
 
 try:
     result = client.run(
