@@ -22,6 +22,7 @@ const result = await client.run(
   ["python3", "-c", "print('hello world')"],
 );
 console.log(result.stdout);    // hello world
+console.log(result.stderr);    // (empty)
 console.log(result.exit_code);  // 0
 console.log(result.wall_ms);   // e.g. 312
 ```
@@ -148,6 +149,7 @@ const result = await client.run(
   { files: ["compute.py"], persist: true },
 );
 
+// Each RunResult includes a unique exec_id that identifies the execution.
 // Download the file the container wrote
 const data = await client.downloadFile(`output/${result.exec_id}/result.json`);
 console.log(new TextDecoder().decode(data)); // {"message": "hello world", "value": 42}
