@@ -43,6 +43,24 @@ func TestCreateNetNS_DuplicatePath_Fails(t *testing.T) {
 	assert.Error(t, err, "expected error when path already exists")
 }
 
+// TestSetupNetwork_InvalidExecID verifies that SetupNetwork rejects unsafe
+// execID values before performing any privileged operations, so no root is
+// required and no netns path is created.
+func TestSetupNetwork_InvalidExecID(t *testing.T) {
+	invalid := []string{
+		"..",
+		"../escape",
+		"foo/bar",
+		"foo\x00bar",
+		"",
+	}
+	for _, id := range invalid {
+		ns, err := SetupNetwork(id, []string{"8.8.8.8"})
+		assert.Error(t, err, "expected error for execID %q", id)
+		assert.Nil(t, ns, "expected nil NetworkSetup for execID %q", id)
+	}
+}
+
 // TestSetupTeardown exercises the full SetupNetwork → Teardown lifecycle.
 // Requires root and CAP_NET_ADMIN (veth creation, bridge attachment).
 func TestSetupTeardown(t *testing.T) {
