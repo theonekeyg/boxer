@@ -124,6 +124,7 @@ export class BoxerClient {
   }
 
   async run(image: string, cmd: string[], options: RunOptions = {}): Promise<RunResult> {
+    if (!image) throw new BoxerValidationError("image must be a non-empty string");
     if (!cmd.length) throw new BoxerValidationError("cmd must be a non-empty array");
     const body = buildRunBody(image, cmd, options);
     const res = await this.fetch("/run", {
@@ -147,7 +148,8 @@ export class BoxerClient {
     } else {
       blob = new Blob([content], { type: "application/octet-stream" });
     }
-    form.append("file", blob, remotePath.split("/").pop() || "file");
+    // Strip trailing slash before extracting the filename so "output/" doesn't yield ""
+    form.append("file", blob, remotePath.replace(/\/$/, "").split("/").pop() || "file");
     const res = await this.fetch("/files", { method: "POST", body: form });
     await raiseForStatus(res);
   }
