@@ -1,6 +1,6 @@
 # boxer-sdk
 
-Python client SDK for [Boxer](../../packages/core) - a sandboxed container execution service backed by gVisor.
+Python client SDK for [Boxer](https://github.com/theonekeyg/boxer) - a sandboxed container execution service backed by gVisor.
 
 ## Installation
 
