@@ -155,6 +155,8 @@ console.log(new TextDecoder().decode(data)); // {"message": "hello world", "valu
 
 The output path pattern is always `output/<exec_id>/<filename>`.
 
+`persist: true` instructs Boxer to retain output files after execution so they can be retrieved with `downloadFile`. Without it, output files are cleaned up automatically once the run completes.
+
 ---
 
 ## Resource limits
