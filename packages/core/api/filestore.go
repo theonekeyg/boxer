@@ -81,6 +81,9 @@ func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 		if d.IsDir() {
 			return nil
 		}
+		if d.Type()&os.ModeSymlink != 0 {
+			return nil // skip symlinks — they may point outside the output directory on the host
+		}
 		rel, err := filepath.Rel(srcDir, path)
 		if err != nil {
 			return fmt.Errorf("rel path: %w", err)
