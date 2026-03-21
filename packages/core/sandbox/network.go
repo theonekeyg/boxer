@@ -123,7 +123,7 @@ func SetupNetwork(execID string, dnsServers []string) (*NetworkSetup, error) {
 	}
 
 	resolvConf := netnsPath + ".resolv.conf"
-	if err := os.WriteFile(resolvConf, buildResolvConf(dnsServers), 0o444); err != nil {
+	if err := os.WriteFile(resolvConf, buildResolvConf(dnsServers), 0o444); err != nil { //nolint:gosec // 0o444 is intentional: read-only resolv.conf
 		removeNetNS(netnsPath)
 		return nil, fmt.Errorf("write resolv.conf: %w", err)
 	}
@@ -168,12 +168,12 @@ func ensureBridge() error {
 			log.Debug().Msg("ip_forward already enabled")
 		} else {
 			log.Info().Msg("enabling ip_forward (global host setting; consider setting net.ipv4.ip_forward=1 in sysctl.conf)")
-			if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0o644); err != nil {
+			if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0o644); err != nil { //nolint:gosec // proc sysctl; mode is ignored by kernel
 				return fmt.Errorf("enable ip_forward: %w", err)
 			}
 		}
 	} else {
-		if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0o644); err != nil {
+		if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0o644); err != nil { //nolint:gosec // proc sysctl; mode is ignored by kernel
 			return fmt.Errorf("enable ip_forward: %w", err)
 		}
 	}
@@ -327,6 +327,15 @@ func buildResolvConf(servers []string) []byte {
 	return []byte(b.String())
 }
 
+// delLink deletes a netlink interface, logging a warning if it fails.
+// Used for best-effort cleanup on error paths where the primary error is
+// already being returned to the caller.
+func delLink(link netlink.Link) {
+	if err := netlink.LinkDel(link); err != nil {
+		log.Warn().Err(err).Str("link", link.Attrs().Name).Msg("delete link failed during cleanup")
+	}
+}
+
 // ifname returns a 16-byte interface name suitable for nftables comparisons.
 func ifname(n string) []byte {
 	b := make([]byte, 16)
@@ -337,7 +346,7 @@ func ifname(n string) []byte {
 // setupVeth creates a veth pair, attaches the host side to boxer0, moves the
 // container side into nsFd, then configures the container interface with the
 // given IP, brings up lo and eth0, and adds a default route via the bridge.
-func setupVeth(hostName, containerIP string, nsFd int) error {
+func setupVeth(hostName, containerIP string, nsFd int) error { //nolint:gocyclo,funlen // linear error-handling chain; splitting would obscure the cleanup logic
 	// Use a unique temporary name for the peer so it doesn't collide with
 	// any existing "eth0" in the host namespace. We rename it to "eth0"
 	// after moving it into the container netns.
@@ -349,7 +358,7 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 	// Delete any stale veth with the same host-side name left over from a
 	// previous boxer process that exited without calling Teardown.
 	if stale, err := netlink.LinkByName(hostName); err == nil {
-		netlink.LinkDel(stale) //nolint:errcheck // best-effort stale cleanup
+		delLink(stale)
 	}
 	if err := netlink.LinkAdd(veth); err != nil {
 		return fmt.Errorf("create veth pair: %w", err)
@@ -362,26 +371,26 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 
 	contLink, err := netlink.LinkByName(peerTmpName)
 	if err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("get container veth peer: %w", err)
 	}
 
 	bridge, err := netlink.LinkByName(bridgeName)
 	if err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("get bridge: %w", err)
 	}
 	if err := netlink.LinkSetMaster(hostLink, bridge); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("attach veth to bridge: %w", err)
 	}
 	if err := netlink.LinkSetUp(hostLink); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("bring host veth up: %w", err)
 	}
 
 	if err := netlink.LinkSetNsFd(contLink, nsFd); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("move veth into netns: %w", err)
 	}
 
@@ -390,7 +399,7 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 	nsHandle := netns.NsHandle(nsFd)
 	nlHandle, err := netlink.NewHandleAt(nsHandle)
 	if err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("open netlink handle for netns: %w", err)
 	}
 	defer nlHandle.Close()
@@ -398,41 +407,41 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 	// Rename the peer from its temporary name to "eth0" inside the container netns.
 	peerLink, err := nlHandle.LinkByName(peerTmpName)
 	if err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("get peer in netns: %w", err)
 	}
 	if err := nlHandle.LinkSetName(peerLink, "eth0"); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("rename peer to eth0: %w", err)
 	}
 
 	eth0, err := nlHandle.LinkByName("eth0")
 	if err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("get eth0 in netns: %w", err)
 	}
 
 	addr, err := netlink.ParseAddr(containerIP)
 	if err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("parse container IP: %w", err)
 	}
 	if err := nlHandle.AddrAdd(eth0, addr); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("assign container IP: %w", err)
 	}
 	if err := nlHandle.LinkSetUp(eth0); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("bring eth0 up: %w", err)
 	}
 
 	lo, err := nlHandle.LinkByName("lo")
 	if err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("get lo in netns: %w", err)
 	}
 	if err := nlHandle.LinkSetUp(lo); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("bring lo up: %w", err)
 	}
 
@@ -441,7 +450,7 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 		LinkIndex: eth0.Attrs().Index,
 		Gw:        gw,
 	}); err != nil {
-		netlink.LinkDel(hostLink) //nolint:errcheck
+		delLink(hostLink)
 		return fmt.Errorf("add default route: %w", err)
 	}
 
@@ -463,11 +472,13 @@ func createNetNS(path string) error {
 		return fmt.Errorf("create netns dir: %w", err)
 	}
 
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDONLY, 0o444)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_RDONLY, 0o444) //nolint:gosec // path is validated by execIDRe; 0o444 is the bind-mount target mode
 	if err != nil {
 		return fmt.Errorf("create netns file: %w", err)
 	}
-	f.Close() //nolint:errcheck // bind-mount target; close immediately after creation
+	if err := f.Close(); err != nil {
+		log.Warn().Err(err).Str("path", path).Msg("close netns file failed")
+	}
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -490,7 +501,9 @@ func createNetNS(path string) error {
 	}()
 
 	if err := <-errCh; err != nil {
-		os.Remove(path) //nolint:errcheck
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			log.Warn().Err(err).Str("path", path).Msg("remove netns file failed during cleanup")
+		}
 		return err
 	}
 	return nil
