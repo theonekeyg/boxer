@@ -1,3 +1,5 @@
+//go:build linux
+
 package sandbox
 
 import (
@@ -5,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"sync"
@@ -27,13 +30,14 @@ const (
 )
 
 var (
-	bridgeOnce sync.Once
-	bridgeErr  error
-	ipCounter  atomic.Uint32
+	bridgeMu    sync.Mutex
+	bridgeReady bool
+	ipCounter   atomic.Uint32
 
-	// execIDRe allows only letters, digits, hyphens, and underscores in execIDs
-	// used to build filesystem paths (netns bind-mount targets).
-	execIDRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
+	// execIDRe allows letters, digits, hyphens, underscores, and dots in
+	// execIDs used to build filesystem paths (netns bind-mount targets).
+	// The explicit ".." check below further guards against path traversal.
+	execIDRe = regexp.MustCompile(`^[a-zA-Z0-9_.+-]+$`)
 )
 
 func init() {
@@ -62,17 +66,25 @@ func (n *NetworkSetup) ResolvConfPath() string { return n.resolvConf }
 //
 // Requires CAP_NET_ADMIN (running as root in practice).
 func SetupNetwork(execID string) (*NetworkSetup, error) {
-	// Ensure the bridge, IP forwarding, and iptables rule exist (once per process).
-	bridgeOnce.Do(func() { bridgeErr = ensureBridge() })
-	if bridgeErr != nil {
-		return nil, fmt.Errorf("setup bridge: %w", bridgeErr)
+	// Validate execID before using it in a filesystem path. The regex rejects
+	// slashes; the explicit check rejects "..". Together they prevent path traversal.
+	if !execIDRe.MatchString(execID) || execID == ".." {
+		return nil, fmt.Errorf("invalid execID %q: must match [a-zA-Z0-9_.+-]+ and not be \"..\"", execID)
 	}
 
-	// Validate execID before using it in a filesystem path to prevent path
-	// traversal (e.g. execID containing "/" or "..").
-	if !execIDRe.MatchString(execID) {
-		return nil, fmt.Errorf("invalid execID %q: must match [a-zA-Z0-9_-]+", execID)
+	// Ensure the bridge, IP forwarding, and nftables rules exist. Unlike
+	// sync.Once, this mutex-based guard retries on failure so a transient
+	// error (e.g., nftables not yet ready at boot) does not permanently break
+	// all subsequent containers in this process.
+	bridgeMu.Lock()
+	if !bridgeReady {
+		if err := ensureBridge(); err != nil {
+			bridgeMu.Unlock()
+			return nil, fmt.Errorf("setup bridge: %w", err)
+		}
+		bridgeReady = true
 	}
+	bridgeMu.Unlock()
 
 	// Allocate a unique IP and a veth name derived from a monotonic counter.
 	// IPs cycle through 10.88.0.2 – 10.88.255.254 (65533 addresses). The
@@ -88,7 +100,7 @@ func SetupNetwork(execID string) (*NetworkSetup, error) {
 	containerIP := fmt.Sprintf("10.88.%d.%d/16", ipN>>8, ipN&0xff)
 	vethHost := fmt.Sprintf("veth%04x", n%0x10000)
 
-	netnsPath := fmt.Sprintf("%s/%s", netnsDir, execID)
+	netnsPath := filepath.Join(netnsDir, execID)
 	if err := createNetNS(netnsPath); err != nil {
 		return nil, fmt.Errorf("create netns: %w", err)
 	}
@@ -105,10 +117,12 @@ func SetupNetwork(execID string) (*NetworkSetup, error) {
 		return nil, err
 	}
 
-	// Write a resolv.conf with public DNS so the container can resolve names.
+	// Write a resolv.conf for the container. We use the host's /etc/resolv.conf
+	// so container DNS respects host policies. An override path can be supplied
+	// via the SANDBOX_RESOLV_CONF environment variable. If both are unavailable
+	// we fall back to public DNS so the container remains functional.
 	resolvConf := netnsPath + ".resolv.conf"
-	const resolvContents = "nameserver 8.8.8.8\nnameserver 8.8.4.4\n"
-	if err := os.WriteFile(resolvConf, []byte(resolvContents), 0o444); err != nil {
+	if err := os.WriteFile(resolvConf, sandboxResolvContents(), 0o444); err != nil {
 		removeNetNS(netnsPath)
 		return nil, fmt.Errorf("write resolv.conf: %w", err)
 	}
@@ -202,15 +216,26 @@ func ensureNftablesRules() error {
 		return fmt.Errorf("open nftables: %w", err)
 	}
 
-	// Idempotency: skip setup if our filter table already exists.
+	// Idempotency: skip setup only when both our tables are present. Checking
+	// just one table would silently accept a half-configured state (e.g., a
+	// crash after boxer_filter was created but before boxer_nat was).
+	// TODO: also inspect chains/rules inside each table so a partial config
+	// (tables present but rules missing) is detected and repaired.
 	tables, err := c.ListTables()
 	if err != nil {
 		return fmt.Errorf("list nftables tables: %w", err)
 	}
+	var hasFilter, hasNat bool
 	for _, t := range tables {
 		if t.Name == "boxer_filter" {
-			return nil
+			hasFilter = true
 		}
+		if t.Name == "boxer_nat" {
+			hasNat = true
+		}
+	}
+	if hasFilter && hasNat {
+		return nil
 	}
 
 	// inet boxer_filter — priority -10 runs before firewalld (priority 0).
@@ -275,6 +300,20 @@ func ensureNftablesRules() error {
 		return fmt.Errorf("apply nftables rules: %w", err)
 	}
 	return nil
+}
+
+// sandboxResolvContents returns DNS configuration for the container resolv.conf.
+// Priority: SANDBOX_RESOLV_CONF env → host /etc/resolv.conf → public DNS fallback.
+func sandboxResolvContents() []byte {
+	if path := os.Getenv("SANDBOX_RESOLV_CONF"); path != "" {
+		if data, err := os.ReadFile(path); err == nil { //nolint:gosec // path from trusted env var
+			return data
+		}
+	}
+	if data, err := os.ReadFile("/etc/resolv.conf"); err == nil {
+		return data
+	}
+	return []byte("nameserver 8.8.8.8\nnameserver 8.8.4.4\n")
 }
 
 // ifname returns a 16-byte interface name suitable for nftables comparisons.
