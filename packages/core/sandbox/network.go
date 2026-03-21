@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"runtime"
 	"sync"
 	"sync/atomic"
 
-	"github.com/coreos/go-iptables/iptables"
+	"github.com/google/nftables"
+	"github.com/google/nftables/expr"
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -152,73 +152,101 @@ func ensureBridge() error {
 		return fmt.Errorf("bring bridge up: %w", err)
 	}
 
-	// If firewalld is active it manages nftables directly, which takes priority
-	// over the legacy iptables compatibility layer. In that case configure the
-	// bridge via firewall-cmd; also run the iptables rules for non-firewalld hosts.
-	if firewalldActive() {
-		if err := ensureFirewalldRules(); err != nil {
-			return err
-		}
-	}
+	return ensureNftablesRules()
+}
 
-	ipt, err := iptables.New()
+// ensureNftablesRules installs nftables FORWARD ACCEPT and POSTROUTING
+// MASQUERADE rules for the boxer0 bridge. Rules are placed at chain priority
+// -10, which runs before firewalld's priority-0 chains, making this approach
+// work on all hosts regardless of whether firewalld, ufw, or plain iptables
+// is in use. The function is idempotent: if our table already exists it
+// returns immediately.
+func ensureNftablesRules() error {
+	c, err := nftables.New()
 	if err != nil {
-		return fmt.Errorf("init iptables: %w", err)
+		return fmt.Errorf("open nftables: %w", err)
 	}
-	if err := ensureForwardRules(ipt); err != nil {
-		return err
-	}
-	return ensureMasquerade(ipt)
-}
 
-// firewalldActive reports whether firewalld is currently running.
-func firewalldActive() bool {
-	return exec.Command("firewall-cmd", "--state").Run() == nil //nolint:gosec
-}
-
-// ensureFirewalldRules adds boxer0 to firewalld's trusted zone and enables
-// masquerade for that zone. Both operations are idempotent.
-func ensureFirewalldRules() error {
-	cmds := [][]string{
-		{"firewall-cmd", "--zone=trusted", "--add-interface=" + bridgeName},
-		{"firewall-cmd", "--zone=trusted", "--add-masquerade"},
+	// Idempotency: skip setup if our filter table already exists.
+	tables, err := c.ListTables()
+	if err != nil {
+		return fmt.Errorf("list nftables tables: %w", err)
 	}
-	for _, args := range cmds {
-		out, err := exec.Command(args[0], args[1:]...).CombinedOutput() //nolint:gosec
-		if err != nil {
-			return fmt.Errorf("firewall-cmd %v: %w: %s", args[1:], err, out)
+	for _, t := range tables {
+		if t.Name == "boxer_filter" {
+			return nil
 		}
+	}
+
+	// inet boxer_filter — priority -10 runs before firewalld (priority 0).
+	filterTable := &nftables.Table{Name: "boxer_filter", Family: nftables.TableFamilyINet}
+	c.AddTable(filterTable)
+	filterChain := c.AddChain(&nftables.Chain{
+		Name:     "forward",
+		Table:    filterTable,
+		Type:     nftables.ChainTypeFilter,
+		Hooknum:  nftables.ChainHookForward,
+		Priority: nftables.ChainPriorityRef(-10),
+	})
+
+	// iifname "boxer0" accept
+	c.AddRule(&nftables.Rule{
+		Table: filterTable, Chain: filterChain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyIIFNAME, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: ifname(bridgeName)},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
+	})
+	// oifname "boxer0" accept
+	c.AddRule(&nftables.Rule{
+		Table: filterTable, Chain: filterChain,
+		Exprs: []expr.Any{
+			&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: ifname(bridgeName)},
+			&expr.Verdict{Kind: expr.VerdictAccept},
+		},
+	})
+
+	// ip boxer_nat — MASQUERADE for the boxer subnet.
+	natTable := &nftables.Table{Name: "boxer_nat", Family: nftables.TableFamilyIPv4}
+	c.AddTable(natTable)
+	natChain := c.AddChain(&nftables.Chain{
+		Name:     "postrouting",
+		Table:    natTable,
+		Type:     nftables.ChainTypeNAT,
+		Hooknum:  nftables.ChainHookPostrouting,
+		Priority: nftables.ChainPriorityNATSource,
+	})
+
+	// ip saddr 10.88.0.0/16 oifname != "boxer0" masquerade
+	_, subnet, _ := net.ParseCIDR(bridgeSubnet) //nolint:errcheck // constant is valid
+	c.AddRule(&nftables.Rule{
+		Table: natTable, Chain: natChain,
+		Exprs: []expr.Any{
+			// match source IP against 10.88.0.0/16
+			&expr.Payload{DestRegister: 1, Base: expr.PayloadBaseNetworkHeader, Offset: 12, Len: 4},
+			&expr.Bitwise{SourceRegister: 1, DestRegister: 1, Len: 4, Mask: subnet.Mask, Xor: []byte{0, 0, 0, 0}},
+			&expr.Cmp{Op: expr.CmpOpEq, Register: 1, Data: subnet.IP.To4()},
+			// oifname != "boxer0"
+			&expr.Meta{Key: expr.MetaKeyOIFNAME, Register: 1},
+			&expr.Cmp{Op: expr.CmpOpNeq, Register: 1, Data: ifname(bridgeName)},
+			// masquerade
+			&expr.Masq{},
+		},
+	})
+
+	if err := c.Flush(); err != nil {
+		return fmt.Errorf("apply nftables rules: %w", err)
 	}
 	return nil
 }
 
-// ensureForwardRules installs iptables FORWARD ACCEPT rules so that traffic
-// from the boxer0 bridge reaches the internet and replies come back.
-// Docker (when present) sets the FORWARD policy to DROP, so without these
-// rules all container packets would be silently dropped.
-func ensureForwardRules(ipt *iptables.IPTables) error {
-	type rule struct {
-		rulespec []string
-	}
-	rules := []rule{
-		// Allow all traffic from the boxer0 bridge (container → internet).
-		{[]string{"-i", bridgeName, "-j", "ACCEPT"}},
-		// Allow all traffic to the boxer0 bridge (internet → container).
-		{[]string{"-o", bridgeName, "-j", "ACCEPT"}},
-	}
-	for _, r := range rules {
-		exists, err := ipt.Exists("filter", "FORWARD", r.rulespec...)
-		if err != nil {
-			return fmt.Errorf("check forward rule: %w", err)
-		}
-		if exists {
-			continue
-		}
-		if err := ipt.Insert("filter", "FORWARD", 1, r.rulespec...); err != nil {
-			return fmt.Errorf("insert forward rule: %w", err)
-		}
-	}
-	return nil
+// ifname returns a 16-byte interface name suitable for nftables comparisons.
+func ifname(n string) []byte {
+	b := make([]byte, 16)
+	copy(b, n+"\x00")
+	return b
 }
 
 // setupVeth creates a veth pair, attaches the host side to boxer0, moves the
@@ -335,21 +363,6 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 	return nil
 }
 
-// ensureMasquerade installs a POSTROUTING masquerade rule for the boxer subnet.
-func ensureMasquerade(ipt *iptables.IPTables) error {
-	rulespec := []string{"-s", bridgeSubnet, "!", "-o", bridgeName, "-j", "MASQUERADE"}
-	exists, err := ipt.Exists("nat", "POSTROUTING", rulespec...)
-	if err != nil {
-		return fmt.Errorf("check masquerade rule: %w", err)
-	}
-	if exists {
-		return nil
-	}
-	if err := ipt.Append("nat", "POSTROUTING", rulespec...); err != nil {
-		return fmt.Errorf("add masquerade rule: %w", err)
-	}
-	return nil
-}
 
 // createNetNS creates a new network namespace pinned to path via a bind mount.
 //
