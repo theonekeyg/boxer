@@ -61,6 +61,7 @@ os.makedirs('/output', exist_ok=True)
 with open('/output/result.json', 'w') as f:
     json.dump({'answer': 42}, f)
 """],
+    persist=True,
 )
 
 data = client.download_file(f"output/{result.exec_id}/result.json")
@@ -97,6 +98,8 @@ Because files are stored by path, you can upload once and reuse across multiple 
 ```python
 with open("model_weights.bin", "rb") as f:
     client.upload_file("shared/weights.bin", f)
+with open("run.py", "rb") as f:
+    client.upload_file("run.py", f)
 
 for prompt in prompts:
     result = client.run(
