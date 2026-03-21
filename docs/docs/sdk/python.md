@@ -80,7 +80,7 @@ result = client.run(
 
 ### Download Output Files
 
-Any file the container writes to `/output/` is automatically captured and retrievable via `download_file` after the run completes.
+Any file the container writes to `/output/` is automatically captured at the end of the run. To retrieve it afterwards, you must set `persist=True` — by default all output files are deleted before the response is returned.
 
 ```python
 code = """
