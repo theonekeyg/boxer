@@ -128,6 +128,9 @@ export class BoxerClient {
    */
   async health(): Promise<boolean> {
     const [res] = await this.fetch("/healthz");
+    // Discard the body so the underlying TCP connection is released back to the
+    // keep-alive pool immediately. cancel() signals the stream to abort without
+    // reading — it returns instantly and does not wait for data to drain.
     await res.body?.cancel();
     return res.ok;
   }
@@ -170,6 +173,8 @@ export class BoxerClient {
     const [res, controller] = await this.fetch("/files", { method: "POST", body: form });
     try {
       await raiseForStatus(res);
+      // Discard the success response body to release the connection back to the
+      // keep-alive pool — raiseForStatus returns without consuming it on 2xx.
       await res.body?.cancel();
     } catch (err) {
       if (controller.signal.aborted) throw this.timeoutError("/files");
