@@ -113,17 +113,17 @@ or directory, preserving the directory structure.
 import { uploadPath } from "boxer-sdk/node";
 
 // Upload a single file
-const paths = await uploadPath(client, "./script.py");
+const filePaths = await uploadPath(client, "./script.py");
 // => ["script.py"]
 
 // Upload an entire directory
-const paths = await uploadPath(client, "./myproject", "myproject");
+const dirPaths = await uploadPath(client, "./myproject", "myproject");
 // => ["myproject/main.py", "myproject/utils.py", ...]
 
 const result = await client.run(
   "python:3.12-slim",
   ["python3", "/myproject/main.py"],
-  { files: paths },
+  { files: dirPaths },
 );
 ```
 
