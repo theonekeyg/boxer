@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"runtime"
 	"sync"
 	"sync/atomic"
 
+	"github.com/coreos/go-iptables/iptables"
 	"github.com/rs/zerolog/log"
 	"github.com/vishvananda/netlink"
 	"github.com/vishvananda/netns"
@@ -151,34 +151,40 @@ func ensureBridge() error {
 		return fmt.Errorf("bring bridge up: %w", err)
 	}
 
-	if err := ensureForwardRules(); err != nil {
+	ipt, err := iptables.New()
+	if err != nil {
+		return fmt.Errorf("init iptables: %w", err)
+	}
+	if err := ensureForwardRules(ipt); err != nil {
 		return err
 	}
-	return ensureMasquerade()
+	return ensureMasquerade(ipt)
 }
 
 // ensureForwardRules installs iptables FORWARD ACCEPT rules so that traffic
 // from the boxer0 bridge reaches the internet and replies come back.
 // Docker (when present) sets the FORWARD policy to DROP, so without these
 // rules all container packets would be silently dropped.
-func ensureForwardRules() error {
-	rules := [][]string{
+func ensureForwardRules(ipt *iptables.IPTables) error {
+	type rule struct {
+		rulespec []string
+	}
+	rules := []rule{
 		// Allow outbound traffic from boxer0.
-		{"-I", "FORWARD", "-i", bridgeName, "-j", "ACCEPT"},
+		{[]string{"-i", bridgeName, "-j", "ACCEPT"}},
 		// Allow established/related traffic back into boxer0.
-		{"-I", "FORWARD", "-o", bridgeName, "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
+		{[]string{"-o", bridgeName, "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"}},
 	}
-	checks := [][]string{
-		{"-C", "FORWARD", "-i", bridgeName, "-j", "ACCEPT"},
-		{"-C", "FORWARD", "-o", bridgeName, "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
-	}
-	for i, check := range checks {
-		if exec.Command("iptables", check...).Run() == nil { //nolint:gosec // args are all constants
-			continue // rule already present
-		}
-		out, err := exec.Command("iptables", rules[i]...).CombinedOutput() //nolint:gosec
+	for _, r := range rules {
+		exists, err := ipt.Exists("filter", "FORWARD", r.rulespec...)
 		if err != nil {
-			return fmt.Errorf("iptables forward rule: %w: %s", err, out)
+			return fmt.Errorf("check forward rule: %w", err)
+		}
+		if exists {
+			continue
+		}
+		if err := ipt.Insert("filter", "FORWARD", 1, r.rulespec...); err != nil {
+			return fmt.Errorf("insert forward rule: %w", err)
 		}
 	}
 	return nil
@@ -293,20 +299,18 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 	return nil
 }
 
-// ensureMasquerade installs a single iptables POSTROUTING masquerade rule for
-// the boxer subnet. Uses -C to check first so the rule is never duplicated.
-func ensureMasquerade() error {
-	args := []string{
-		"-t", "nat", "-C", "POSTROUTING",
-		"-s", bridgeSubnet, "!", "-o", bridgeName, "-j", "MASQUERADE",
-	}
-	if exec.Command("iptables", args...).Run() == nil { //nolint:gosec // args are all constants
-		return nil // rule already present
-	}
-	args[2] = "-A"
-	out, err := exec.Command("iptables", args...).CombinedOutput() //nolint:gosec
+// ensureMasquerade installs a POSTROUTING masquerade rule for the boxer subnet.
+func ensureMasquerade(ipt *iptables.IPTables) error {
+	rulespec := []string{"-s", bridgeSubnet, "!", "-o", bridgeName, "-j", "MASQUERADE"}
+	exists, err := ipt.Exists("nat", "POSTROUTING", rulespec...)
 	if err != nil {
-		return fmt.Errorf("iptables masquerade: %w: %s", err, out)
+		return fmt.Errorf("check masquerade rule: %w", err)
+	}
+	if exists {
+		return nil
+	}
+	if err := ipt.Append("nat", "POSTROUTING", rulespec...); err != nil {
+		return fmt.Errorf("add masquerade rule: %w", err)
 	}
 	return nil
 }
