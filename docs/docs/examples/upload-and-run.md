@@ -10,7 +10,7 @@ Source: [`examples/upload-and-run/`](https://github.com/theonekeyg/boxer/tree/ma
 
 ## Project Layout
 
-```
+```text
 project/
   foo/
     __init__.py

@@ -26,7 +26,7 @@ result = client.run(
     cmd=["python3", "-c", "import socket; socket.create_connection(('8.8.8.8', 53))"],
     # network defaults to "none"
 )
-# exit_code != 0 — connection refused
+# exit_code != 0 — external connection fails
 ```
 
 ### `sandbox`
