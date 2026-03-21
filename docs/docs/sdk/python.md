@@ -105,7 +105,7 @@ data = client.download_file(f"output/{result.exec_id}/result.json")
 print(data)  # b'{"message": "hello world", "value": 42}'
 ```
 
-The output path pattern is always `output/<exec_id>/<filename>`.
+The output path pattern is `output/<exec_id>/<relative_path>`, preserving any subdirectory structure written under `/output/` (e.g. `output/<exec_id>/subdir/file.json`).
 
 ## Resource Limits
 
