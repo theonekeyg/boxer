@@ -128,6 +128,7 @@ export class BoxerClient {
    */
   async health(): Promise<boolean> {
     const [res] = await this.fetch("/healthz");
+    await res.body?.cancel();
     return res.ok;
   }
 
@@ -169,6 +170,7 @@ export class BoxerClient {
     const [res, controller] = await this.fetch("/files", { method: "POST", body: form });
     try {
       await raiseForStatus(res);
+      await res.body?.cancel();
     } catch (err) {
       if (controller.signal.aborted) throw this.timeoutError("/files");
       throw err;
