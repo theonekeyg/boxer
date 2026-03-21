@@ -94,6 +94,8 @@ export class BoxerClient {
   private async fetch(path: string, init: RequestInit = {}): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeout);
+    // biome-ignore lint/suspicious/noExplicitAny: unref is Node-only
+    (timer as any).unref?.();
 
     try {
       return await fetch(`${this.baseUrl}${path}`, {
