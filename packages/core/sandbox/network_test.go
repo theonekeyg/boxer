@@ -1,7 +1,6 @@
 package sandbox
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -43,26 +42,22 @@ func TestCreateNetNS_DuplicatePath_Fails(t *testing.T) {
 }
 
 // TestSetupTeardown exercises the full SetupNetwork → Teardown lifecycle.
-// It requires root AND the CNI plugin binaries (bridge, host-local) to be
-// installed in one of the default search directories.
+// Requires root and CAP_NET_ADMIN (veth creation, bridge attachment).
 func TestSetupTeardown(t *testing.T) {
 	if os.Getuid() != 0 {
-		t.Skip("requires root: CNI setup calls unshare(CLONE_NEWNET) and creates veth pairs")
+		t.Skip("requires root: netlink veth/bridge operations need CAP_NET_ADMIN")
 	}
 
-	ctx := context.Background()
-	execID := "boxer-cni-test-" + t.Name()
+	execID := "boxer-net-test-" + t.Name()
 
-	ns, err := SetupNetwork(ctx, execID, nil, t.TempDir())
-	if err != nil {
-		t.Skipf("CNI plugin binaries not available (skipping): %v", err)
-	}
+	ns, err := SetupNetwork(execID)
+	require.NoError(t, err)
 
 	path := ns.NetNSPath()
 	_, statErr := os.Stat(path)
 	require.NoError(t, statErr, "netns path should exist after SetupNetwork")
 
-	ns.Teardown(ctx)
+	ns.Teardown()
 
 	_, statErr = os.Stat(path)
 	assert.True(t, os.IsNotExist(statErr), "netns path should be removed after Teardown")

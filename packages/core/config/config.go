@@ -25,34 +25,11 @@ type BoxerConfig struct {
 	IgnoreCgroups    bool           `json:"ignore_cgroups"`      // skip cgroup setup (dev/rootless)
 	Defaults         ResourceLimits `json:"defaults"`
 
-	// CNIPluginDirs lists directories to search for CNI plugin binaries (bridge,
-	// host-local, etc.). If empty, the standard system paths are used.
-	CNIPluginDirs []string `json:"cni_plugin_dirs"`
-	// CNICacheDir is the directory used by libcni to cache network allocation
-	// state between ADD and DEL calls. Defaults to <Home>/cni-cache.
-	CNICacheDir string `json:"cni_cache_dir"`
 }
 
 // StateRoot is where per-execution temp directories are created.
 func (c *BoxerConfig) StateRoot() string { return filepath.Join(c.Home, "run") }
 
-// ResolveCNIPluginDirs returns the CNI plugin binary search dirs. If none are
-// configured, it falls back to the standard system locations.
-func (c *BoxerConfig) ResolveCNIPluginDirs() []string {
-	if len(c.CNIPluginDirs) > 0 {
-		return c.CNIPluginDirs
-	}
-	return []string{"/opt/cni/bin", "/usr/lib/cni", "/usr/local/lib/cni"}
-}
-
-// ResolveCNICacheDir returns the libcni cache directory, defaulting to
-// <Home>/cni-cache.
-func (c *BoxerConfig) ResolveCNICacheDir() string {
-	if c.CNICacheDir != "" {
-		return c.CNICacheDir
-	}
-	return filepath.Join(c.Home, "cni-cache")
-}
 
 // ImageStore is where unpacked image rootfs trees are cached.
 func (c *BoxerConfig) ImageStore() string { return filepath.Join(c.Home, "images") }

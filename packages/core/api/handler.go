@@ -184,9 +184,9 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 
 	execID := sandbox.NewExecID()
 
-	// For sandbox/host network modes, set up a CNI-configured network namespace
-	// before building the OCI spec so that gVisor can join a prepared netns
-	// with a veth pair, IP address, and routes already in place.
+	// For sandbox/host network modes, configure a network namespace before
+	// building the OCI spec so that gVisor can join a prepared netns with a
+	// veth pair, IP address, and routes already in place.
 	var netnsPath string
 	if req.Network == "sandbox" || req.Network == "host" {
 		if os.Getuid() != 0 {
@@ -195,13 +195,13 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 			})
 			return
 		}
-		netSetup, nsErr := sandbox.SetupNetwork(ctx, execID, h.cfg.ResolveCNIPluginDirs(), h.cfg.ResolveCNICacheDir())
+		netSetup, nsErr := sandbox.SetupNetwork(execID)
 		if nsErr != nil {
-			zerolog.Ctx(ctx).Error().Err(nsErr).Msg("CNI network setup failed")
+			zerolog.Ctx(ctx).Error().Err(nsErr).Msg("network setup failed")
 			c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "network setup failed: " + nsErr.Error()})
 			return
 		}
-		defer netSetup.Teardown(ctx)
+		defer netSetup.Teardown()
 		netnsPath = netSetup.NetNSPath()
 	}
 
