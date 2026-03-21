@@ -39,7 +39,10 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "File contents"
+                        "description": "File contents",
+                        "schema": {
+                            "type": "file"
+                        }
                     },
                     "400": {
                         "description": "Missing or invalid path",
@@ -136,7 +139,7 @@ const docTemplate = `{
         },
         "/run": {
             "post": {
-                "description": "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.\nFiles listed in ` + "`" + `files` + "`" + ` must be uploaded first via POST /files; each is bind-mounted read-only at /\u003cpath\u003e inside the container.\nOutput files written to /output/ inside the container are captured and retrievable via GET /files?path=output/\u003cexec_id\u003e/\u003cfilename\u003e.",
+                "description": "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.\nFiles listed in ` + "`" + `files` + "`" + ` must be uploaded first via POST /files; each is bind-mounted read-only at /\u003cpath\u003e inside the container.\nOutput files written to /output/ inside the container are captured and retrievable via GET /files?path=output/\u003cexec_id\u003e/\u003cfilename\u003e only when persist=true is set; they are deleted by default.",
                 "consumes": [
                     "application/json"
                 ],

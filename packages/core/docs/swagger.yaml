@@ -125,6 +125,8 @@ paths:
       responses:
         "200":
           description: File contents
+          schema:
+            type: file
         "400":
           description: Missing or invalid path
           schema:
@@ -196,7 +198,7 @@ paths:
       description: |-
         Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
         Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /<path> inside the container.
-        Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/<exec_id>/<filename>.
+        Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/<exec_id>/<filename> only when persist=true is set; they are deleted by default.
       parameters:
       - description: Execution parameters
         in: body

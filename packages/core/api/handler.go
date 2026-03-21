@@ -97,7 +97,7 @@ func (h *Handler) UploadFile(c *gin.Context) {
 // @Tags        files
 // @Produce     application/octet-stream
 // @Param       path  query  string  true  "Relative file path (e.g. output/boxer-abc123/result.json)"
-// @Success     200   "File contents"
+// @Success     200   {file}  file  "File contents"
 // @Failure     400   {object}  ErrorResponse  "Missing or invalid path"
 // @Failure     404   {object}  ErrorResponse  "File not found"
 // @Router      /files [get]
@@ -126,7 +126,7 @@ func (h *Handler) DownloadFile(c *gin.Context) {
 // @Summary     Execute a command in a sandboxed container
 // @Description Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
 // @Description Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /<path> inside the container.
-// @Description Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/<exec_id>/<filename>.
+// @Description Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/<exec_id>/<filename> only when persist=true is set; they are deleted by default.
 // @Tags        execution
 // @Accept      json
 // @Produce     json
