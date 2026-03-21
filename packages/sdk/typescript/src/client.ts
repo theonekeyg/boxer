@@ -94,6 +94,11 @@ export class BoxerClient {
         ...init,
         signal: controller.signal,
       });
+    } catch (err) {
+      if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+        throw new BoxerTimeoutError(`Request to ${path} timed out after ${this.timeout}ms`, 408);
+      }
+      throw err;
     } finally {
       clearTimeout(timer);
     }
