@@ -151,16 +151,50 @@ func ensureBridge() error {
 		return fmt.Errorf("bring bridge up: %w", err)
 	}
 
+	if err := ensureForwardRules(); err != nil {
+		return err
+	}
 	return ensureMasquerade()
+}
+
+// ensureForwardRules installs iptables FORWARD ACCEPT rules so that traffic
+// from the boxer0 bridge reaches the internet and replies come back.
+// Docker (when present) sets the FORWARD policy to DROP, so without these
+// rules all container packets would be silently dropped.
+func ensureForwardRules() error {
+	rules := [][]string{
+		// Allow outbound traffic from boxer0.
+		{"-I", "FORWARD", "-i", bridgeName, "-j", "ACCEPT"},
+		// Allow established/related traffic back into boxer0.
+		{"-I", "FORWARD", "-o", bridgeName, "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
+	}
+	checks := [][]string{
+		{"-C", "FORWARD", "-i", bridgeName, "-j", "ACCEPT"},
+		{"-C", "FORWARD", "-o", bridgeName, "-m", "conntrack", "--ctstate", "RELATED,ESTABLISHED", "-j", "ACCEPT"},
+	}
+	for i, check := range checks {
+		if exec.Command("iptables", check...).Run() == nil { //nolint:gosec // args are all constants
+			continue // rule already present
+		}
+		out, err := exec.Command("iptables", rules[i]...).CombinedOutput() //nolint:gosec
+		if err != nil {
+			return fmt.Errorf("iptables forward rule: %w: %s", err, out)
+		}
+	}
+	return nil
 }
 
 // setupVeth creates a veth pair, attaches the host side to boxer0, moves the
 // container side into nsFd, then configures the container interface with the
 // given IP, brings up lo and eth0, and adds a default route via the bridge.
 func setupVeth(hostName, containerIP string, nsFd int) error {
+	// Use a unique temporary name for the peer so it doesn't collide with
+	// any existing "eth0" in the host namespace. We rename it to "eth0"
+	// after moving it into the container netns.
+	peerTmpName := hostName + "p"
 	veth := &netlink.Veth{
 		LinkAttrs: netlink.LinkAttrs{Name: hostName},
-		PeerName:  "eth0",
+		PeerName:  peerTmpName,
 	}
 	if err := netlink.LinkAdd(veth); err != nil {
 		return fmt.Errorf("create veth pair: %w", err)
@@ -171,7 +205,7 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 		return fmt.Errorf("get host veth: %w", err)
 	}
 
-	contLink, err := netlink.LinkByName("eth0")
+	contLink, err := netlink.LinkByName(peerTmpName)
 	if err != nil {
 		netlink.LinkDel(hostLink) //nolint:errcheck
 		return fmt.Errorf("get container veth peer: %w", err)
@@ -205,6 +239,17 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 		return fmt.Errorf("open netlink handle for netns: %w", err)
 	}
 	defer nlHandle.Close()
+
+	// Rename the peer from its temporary name to "eth0" inside the container netns.
+	peerLink, err := nlHandle.LinkByName(peerTmpName)
+	if err != nil {
+		netlink.LinkDel(hostLink) //nolint:errcheck
+		return fmt.Errorf("get peer in netns: %w", err)
+	}
+	if err := nlHandle.LinkSetName(peerLink, "eth0"); err != nil {
+		netlink.LinkDel(hostLink) //nolint:errcheck
+		return fmt.Errorf("rename peer to eth0: %w", err)
+	}
 
 	eth0, err := nlHandle.LinkByName("eth0")
 	if err != nil {
