@@ -114,8 +114,12 @@ export class BoxerClient {
   }
 
   async health(): Promise<boolean> {
-    const res = await this.fetch("/healthz");
-    return res.ok;
+    try {
+      const res = await this.fetch("/healthz");
+      return res.ok;
+    } catch {
+      return false;
+    }
   }
 
   async run(image: string, cmd: string[], options: RunOptions = {}): Promise<RunResult> {
