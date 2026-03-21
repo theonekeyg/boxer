@@ -101,13 +101,14 @@ export class BoxerClient {
         signal: controller.signal,
       });
     } catch (err) {
-      if (controller.signal.aborted || (err instanceof Error && err.name === "AbortError")) {
+      clearTimeout(timer);
+      if (controller.signal.aborted) {
         throw new BoxerTimeoutError(`Request to ${path} timed out after ${this.timeout}ms`, 0);
       }
       throw err;
-    } finally {
-      clearTimeout(timer);
     }
+    // timer intentionally not cleared on success — it keeps running through the
+    // caller's body read and aborts a stalled stream if the deadline is exceeded
   }
 
   async health(): Promise<boolean> {
@@ -140,7 +141,6 @@ export class BoxerClient {
       blob = new Blob([content], { type: "application/octet-stream" });
     }
     form.append("file", blob, remotePath.split("/").pop() || "file");
-
     const res = await this.fetch("/files", { method: "POST", body: form });
     await raiseForStatus(res);
   }
