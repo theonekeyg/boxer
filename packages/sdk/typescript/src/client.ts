@@ -137,6 +137,7 @@ export class BoxerClient {
   }
 
   async uploadFile(remotePath: string, content: Blob | Uint8Array | ArrayBuffer): Promise<void> {
+    if (!remotePath) throw new BoxerValidationError("remotePath must be a non-empty string");
     const form = new FormData();
     form.append("path", remotePath);
     let blob: Blob;
@@ -155,6 +156,7 @@ export class BoxerClient {
   }
 
   async downloadFile(path: string): Promise<Uint8Array> {
+    if (!path) throw new BoxerValidationError("path must be a non-empty string");
     const res = await this.fetch(`/files?${new URLSearchParams({ path }).toString()}`);
     await raiseForStatus(res);
     return new Uint8Array(await res.arrayBuffer());
