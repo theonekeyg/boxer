@@ -202,6 +202,11 @@ func setupVeth(hostName, containerIP string, nsFd int) error {
 		LinkAttrs: netlink.LinkAttrs{Name: hostName},
 		PeerName:  peerTmpName,
 	}
+	// Delete any stale veth with the same host-side name left over from a
+	// previous boxer process that exited without calling Teardown.
+	if stale, err := netlink.LinkByName(hostName); err == nil {
+		netlink.LinkDel(stale) //nolint:errcheck // best-effort stale cleanup
+	}
 	if err := netlink.LinkAdd(veth); err != nil {
 		return fmt.Errorf("create veth pair: %w", err)
 	}
