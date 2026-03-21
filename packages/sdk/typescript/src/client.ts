@@ -140,8 +140,8 @@ export class BoxerClient {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
-    await raiseForStatus(res);
     try {
+      await raiseForStatus(res);
       return parseRunResult(await res.json());
     } catch (err) {
       if (controller.signal.aborted) throw this.timeoutError("/run");
@@ -164,8 +164,13 @@ export class BoxerClient {
     }
     // Strip trailing slash before extracting the filename so "output/" doesn't yield ""
     form.append("file", blob, remotePath.replace(/\/$/, "").split("/").pop() || "file");
-    const [res] = await this.fetch("/files", { method: "POST", body: form });
-    await raiseForStatus(res);
+    const [res, controller] = await this.fetch("/files", { method: "POST", body: form });
+    try {
+      await raiseForStatus(res);
+    } catch (err) {
+      if (controller.signal.aborted) throw this.timeoutError("/files");
+      throw err;
+    }
   }
 
   async downloadFile(path: string): Promise<Uint8Array> {
