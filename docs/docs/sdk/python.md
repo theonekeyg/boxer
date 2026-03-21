@@ -25,6 +25,7 @@ with BoxerClient("http://localhost:8080") as client:
         cmd=["python3", "-c", "print('hello world')"],
     )
     print(result.stdout)    # hello world
+    print(result.stderr)    # (empty)
     print(result.exit_code) # 0
     print(result.wall_ms)   # e.g. 312
 ```
