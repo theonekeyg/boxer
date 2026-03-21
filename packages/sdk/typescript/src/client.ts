@@ -151,8 +151,11 @@ export class BoxerClient {
 
   async uploadFile(remotePath: string, content: Blob | Uint8Array | ArrayBuffer): Promise<void> {
     if (!remotePath) throw new BoxerValidationError("remotePath must be a non-empty string");
+    // Normalise once: strip trailing slash so both the path field and the
+    // Content-Disposition filename are consistent (e.g. "output/" → "output").
+    const normalisedPath = remotePath.replace(/\/$/, "");
     const form = new FormData();
-    form.append("path", remotePath);
+    form.append("path", normalisedPath);
     let blob: Blob;
     if (content instanceof Blob) {
       blob = content;
@@ -162,8 +165,7 @@ export class BoxerClient {
     } else {
       blob = new Blob([content], { type: "application/octet-stream" });
     }
-    // Strip trailing slash before extracting the filename so "output/" doesn't yield ""
-    form.append("file", blob, remotePath.replace(/\/$/, "").split("/").pop() || "file");
+    form.append("file", blob, normalisedPath.split("/").pop() || "file");
     const [res, controller] = await this.fetch("/files", { method: "POST", body: form });
     try {
       await raiseForStatus(res);
