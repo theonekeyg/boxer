@@ -158,6 +158,7 @@ export class BoxerClient {
     // Normalise once: strip trailing slash so both the path field and the
     // Content-Disposition filename are consistent (e.g. "output/" → "output").
     const normalisedPath = remotePath.replace(/\/$/, "");
+    if (!normalisedPath) throw new BoxerValidationError("remotePath must not be solely a slash");
     const form = new FormData();
     form.append("path", normalisedPath);
     let blob: Blob;
