@@ -180,8 +180,8 @@ export class BoxerClient {
     const [res, controller] = await this.fetch(
       `/files?${new URLSearchParams({ path }).toString()}`,
     );
-    await raiseForStatus(res);
     try {
+      await raiseForStatus(res);
       return new Uint8Array(await res.arrayBuffer());
     } catch (err) {
       if (controller.signal.aborted) throw this.timeoutError("/files");
