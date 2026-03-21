@@ -4,14 +4,14 @@ Boxer is a sandboxed container execution service backed by [gVisor](https://gvis
 
 ## Why Boxer
 
-Running untrusted code is a hard problem. Docker alone provides namespace isolation but shares the host kernel — a compromised container can exploit kernel vulnerabilities and escape. Boxer wraps every execution in gVisor's user-space kernel (`runsc`), which intercepts and validates all system calls before they reach the host. The attack surface is dramatically reduced.
+Running untrusted code is a hard problem. Docker alone provides namespace isolation but shares the host kernel - a compromised container can exploit kernel vulnerabilities and escape. Boxer wraps every execution in gVisor's user-space kernel (`runsc`), which intercepts and validates all system calls before they reach the host. The attack surface is dramatically reduced.
 
 This makes Boxer a good fit for:
 
-- **LLM training and inference pipelines** — execute model-generated code safely without exposing your host to arbitrary syscalls
-- **Decentralized oracle evaluations** — run untrusted verification scripts submitted by network participants
-- **Prediction markets and agent frameworks** — evaluate outcomes by executing code from unknown sources
-- **Code execution as a service** — any scenario where you need to run unstructured, user-supplied, or LLM-generated code at scale
+- **LLM training and inference pipelines** - execute model-generated code safely without exposing your host to arbitrary syscalls
+- **Decentralized oracle evaluations** - run untrusted verification scripts submitted by network participants
+- **Prediction markets and agent frameworks** - evaluate outcomes by executing code from unknown sources
+- **Code execution as a service** - any scenario where you need to run unstructured, user-supplied, or LLM-generated code at scale
 
 ## How It Works
 
