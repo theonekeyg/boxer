@@ -46,25 +46,31 @@ function limitsToObject(limits: ResourceLimits): Record<string, unknown> {
 
 function parseRunResult(data: unknown): RunResult {
   if (data == null || typeof data !== "object" || Array.isArray(data)) {
-    throw new Error("Unexpected response from Boxer API: expected an object");
+    throw new BoxerAPIError("Unexpected response from Boxer API: expected an object", 200);
   }
 
   const d = data as Record<string, unknown>;
 
   if (typeof d.exec_id !== "string") {
-    throw new Error("Unexpected response from Boxer API: exec_id must be a string");
+    throw new BoxerAPIError("Unexpected response from Boxer API: exec_id must be a string", 200);
   }
   if (typeof d.exit_code !== "number" || !Number.isFinite(d.exit_code)) {
-    throw new Error("Unexpected response from Boxer API: exit_code must be a finite number");
+    throw new BoxerAPIError(
+      "Unexpected response from Boxer API: exit_code must be a finite number",
+      200,
+    );
   }
   if (typeof d.stdout !== "string") {
-    throw new Error("Unexpected response from Boxer API: stdout must be a string");
+    throw new BoxerAPIError("Unexpected response from Boxer API: stdout must be a string", 200);
   }
   if (typeof d.stderr !== "string") {
-    throw new Error("Unexpected response from Boxer API: stderr must be a string");
+    throw new BoxerAPIError("Unexpected response from Boxer API: stderr must be a string", 200);
   }
   if (typeof d.wall_ms !== "number" || !Number.isFinite(d.wall_ms)) {
-    throw new Error("Unexpected response from Boxer API: wall_ms must be a finite number");
+    throw new BoxerAPIError(
+      "Unexpected response from Boxer API: wall_ms must be a finite number",
+      200,
+    );
   }
 
   return {
