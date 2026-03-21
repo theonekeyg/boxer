@@ -37,12 +37,17 @@ func init() {
 // NetworkSetup holds the resources allocated for a container's network.
 // Call Teardown after the container exits to release them.
 type NetworkSetup struct {
-	netnsPath string
-	vethName  string // host-side veth; deleting it also removes the container peer
+	netnsPath     string
+	resolvConf    string // path to written resolv.conf; empty if not created
+	vethName      string // host-side veth; deleting it also removes the container peer
 }
 
 // NetNSPath returns the filesystem path of the pinned network namespace.
 func (n *NetworkSetup) NetNSPath() string { return n.netnsPath }
+
+// ResolvConfPath returns the host path of the resolv.conf written for this
+// container, so callers can bind-mount it to /etc/resolv.conf.
+func (n *NetworkSetup) ResolvConfPath() string { return n.resolvConf }
 
 // SetupNetwork creates a pinned network namespace and wires it to the host via
 // a veth pair connected to the boxer0 bridge. The container gets an IP in
@@ -64,7 +69,7 @@ func SetupNetwork(execID string) (*NetworkSetup, error) {
 	containerIP := fmt.Sprintf("10.88.%d.%d/16", ipN>>8, ipN&0xff)
 	vethHost := fmt.Sprintf("veth%04x", n%0x10000)
 
-	netnsPath := fmt.Sprintf("%s/boxer-%s", netnsDir, execID)
+	netnsPath := fmt.Sprintf("%s/%s", netnsDir, execID)
 	if err := createNetNS(netnsPath); err != nil {
 		return nil, fmt.Errorf("create netns: %w", err)
 	}
@@ -81,18 +86,32 @@ func SetupNetwork(execID string) (*NetworkSetup, error) {
 		return nil, err
 	}
 
+	// Write a resolv.conf with public DNS so the container can resolve names.
+	resolvConf := netnsPath + ".resolv.conf"
+	const resolvContents = "nameserver 8.8.8.8\nnameserver 8.8.4.4\n"
+	if err := os.WriteFile(resolvConf, []byte(resolvContents), 0o444); err != nil {
+		removeNetNS(netnsPath)
+		return nil, fmt.Errorf("write resolv.conf: %w", err)
+	}
+
 	log.Debug().Str("exec_id", execID).Str("ip", containerIP).
 		Str("veth", vethHost).Str("netns", netnsPath).Msg("network setup complete")
 
-	return &NetworkSetup{netnsPath: netnsPath, vethName: vethHost}, nil
+	return &NetworkSetup{netnsPath: netnsPath, resolvConf: resolvConf, vethName: vethHost}, nil
 }
 
-// Teardown deletes the host-side veth (which also removes its container peer)
-// and unmounts the pinned network namespace. Errors are logged, not returned.
+// Teardown deletes the host-side veth (which also removes its container peer),
+// removes the resolv.conf file, and unmounts the pinned network namespace.
+// Errors are logged, not returned.
 func (n *NetworkSetup) Teardown() {
 	if link, err := netlink.LinkByName(n.vethName); err == nil {
 		if err := netlink.LinkDel(link); err != nil {
 			log.Warn().Err(err).Str("veth", n.vethName).Msg("delete veth failed")
+		}
+	}
+	if n.resolvConf != "" {
+		if err := os.Remove(n.resolvConf); err != nil && !os.IsNotExist(err) {
+			log.Warn().Err(err).Str("path", n.resolvConf).Msg("remove resolv.conf failed")
 		}
 	}
 	removeNetNS(n.netnsPath)

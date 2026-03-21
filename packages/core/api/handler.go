@@ -203,6 +203,12 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 		}
 		defer netSetup.Teardown()
 		netnsPath = netSetup.NetNSPath()
+		extraMounts = append(extraMounts, specs.Mount{
+			Source:      netSetup.ResolvConfPath(),
+			Destination: "/etc/resolv.conf",
+			Type:        "bind",
+			Options:     []string{"rbind", "ro"},
+		})
 	}
 
 	// We need the bundle's output dir for the output mount; create the bundle
