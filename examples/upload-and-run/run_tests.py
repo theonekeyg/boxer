@@ -15,11 +15,12 @@ with BoxerClient() as client:
     result = client.run(
         image="python:3.12-slim",
         cmd=[
-            "bash", "-c",
+            "bash",
+            "-c",
             "pip install pytest -q && pytest /project/ -v",
         ],
         files=paths,
-        network="host",
+        network="sandbox",
     )
 
     print(result.stdout)
