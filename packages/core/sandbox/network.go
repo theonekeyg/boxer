@@ -219,8 +219,21 @@ func ensureNftablesRules() error {
 	// Idempotency: skip setup only when both our tables are present. Checking
 	// just one table would silently accept a half-configured state (e.g., a
 	// crash after boxer_filter was created but before boxer_nat was).
-	// TODO: also inspect chains/rules inside each table so a partial config
-	// (tables present but rules missing) is detected and repaired.
+	//
+	// TODO: also inspect chains inside each table so a partial config is
+	// detected and repaired. Example broken sequence: (1) boxer creates both
+	// tables successfully and sets bridgeReady=true; (2) an operator runs
+	// "nft flush table inet boxer_filter", which removes all chains and rules
+	// but leaves the table itself; (3) boxer restarts — this check sees both
+	// tables, returns nil, and all subsequent containers silently lose their
+	// FORWARD ACCEPT rules for the lifetime of the process.
+	//
+	// We intentionally leave this as a TODO rather than adding per-container
+	// chain inspection: ensureNftablesRules is called once per process (guarded
+	// by bridgeMu/bridgeReady), the interference scenario requires deliberate
+	// external action, and a process restart trivially restores correct state.
+	// The cost of a ListChains round-trip on every SetupNetwork call is not
+	// justified by the threat model.
 	tables, err := c.ListTables()
 	if err != nil {
 		return fmt.Errorf("list nftables tables: %w", err)
