@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"regexp"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -29,6 +30,10 @@ var (
 	bridgeOnce sync.Once
 	bridgeErr  error
 	ipCounter  atomic.Uint32
+
+	// execIDRe allows only letters, digits, hyphens, and underscores in execIDs
+	// used to build filesystem paths (netns bind-mount targets).
+	execIDRe = regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 )
 
 func init() {
@@ -63,8 +68,21 @@ func SetupNetwork(execID string) (*NetworkSetup, error) {
 		return nil, fmt.Errorf("setup bridge: %w", bridgeErr)
 	}
 
+	// Validate execID before using it in a filesystem path to prevent path
+	// traversal (e.g. execID containing "/" or "..").
+	if !execIDRe.MatchString(execID) {
+		return nil, fmt.Errorf("invalid execID %q: must match [a-zA-Z0-9_-]+", execID)
+	}
+
 	// Allocate a unique IP and a veth name derived from a monotonic counter.
-	// IPs cycle through 10.88.0.2 – 10.88.255.254 (65533 addresses).
+	// IPs cycle through 10.88.0.2 – 10.88.255.254 (65533 addresses). The
+	// counter itself is a uint32 that never wraps in practice (would require
+	// ~4 billion increments), but the IP range wraps every 65,533 allocations.
+	// If more than 65,533 containers are running simultaneously, a new container
+	// may receive an IP already assigned to a live container. In practice boxer
+	// is not designed for that scale; operators requiring collision-free IPs at
+	// very high concurrency should assign a larger subnet or implement an
+	// in-use IP bitmap.
 	n := ipCounter.Add(1)
 	ipN := (n-2)%65533 + 2
 	containerIP := fmt.Sprintf("10.88.%d.%d/16", ipN>>8, ipN&0xff)
@@ -120,12 +138,29 @@ func (n *NetworkSetup) Teardown() {
 }
 
 // ensureBridge creates the boxer0 bridge with its gateway IP, enables IPv4
-// forwarding, and installs the iptables masquerade rule. All steps are
-// idempotent so it is safe to call on a host where a previous boxer process
-// already configured the bridge.
+// forwarding, and installs nftables rules. All steps are idempotent so it is
+// safe to call on a host where a previous boxer process already configured the
+// bridge.
+//
+// NOTE: enabling ip_forward is a global, persistent host-level change. For
+// production deployments operators should pre-configure this via sysctl.conf
+// (net.ipv4.ip_forward = 1) rather than relying on boxer to set it at runtime.
 func ensureBridge() error {
-	if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0o644); err != nil {
-		return fmt.Errorf("enable ip_forward: %w", err)
+	// Only write ip_forward if it is not already enabled; the write is a
+	// global, persistent host change so we avoid it when unnecessary.
+	if cur, err := os.ReadFile("/proc/sys/net/ipv4/ip_forward"); err == nil {
+		if len(cur) > 0 && cur[0] == '1' {
+			log.Debug().Msg("ip_forward already enabled")
+		} else {
+			log.Info().Msg("enabling ip_forward (global host setting; consider setting net.ipv4.ip_forward=1 in sysctl.conf)")
+			if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0o644); err != nil {
+				return fmt.Errorf("enable ip_forward: %w", err)
+			}
+		}
+	} else {
+		if err := os.WriteFile("/proc/sys/net/ipv4/ip_forward", []byte("1"), 0o644); err != nil {
+			return fmt.Errorf("enable ip_forward: %w", err)
+		}
 	}
 
 	br, err := netlink.LinkByName(bridgeName)
