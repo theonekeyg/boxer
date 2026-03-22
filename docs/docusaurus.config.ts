@@ -3,6 +3,10 @@ import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import type * as Redocusaurus from 'redocusaurus';
 
+const algoliaAppId = process.env.ALGOLIA_APP_ID ?? '';
+const algoliaSearchKey = process.env.ALGOLIA_SEARCH_API_KEY ?? '';
+const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? 'boxer';
+
 const config: Config = {
   title: 'Boxer',
   tagline: 'Sandboxed container execution powered by gVisor',
@@ -112,6 +116,15 @@ const config: Config = {
       darkTheme: prismThemes.dracula,
       additionalLanguages: ['bash', 'python', 'json'],
     },
+    ...(algoliaAppId && algoliaSearchKey ? {
+      algolia: {
+        appId: algoliaAppId,
+        apiKey: algoliaSearchKey,
+        indexName: algoliaIndexName,
+        contextualSearch: true,
+        searchPagePath: 'search',
+      },
+    } : {}),
   } satisfies Preset.ThemeConfig,
 };
 
