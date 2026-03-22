@@ -18,6 +18,102 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/files": {
+            "get": {
+                "description": "Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/\u003cexec_id\u003e/\u003cfilename\u003e.",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Download a file from the file store",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Relative file path (e.g. output/boxer-abc123/result.json)",
+                        "name": "path",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "File contents",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or invalid path",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "File not found",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /\u003cpath\u003e inside the container.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "files"
+                ],
+                "summary": "Upload a file to the file store",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "File content",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Relative destination path (e.g. workspace/script.py)",
+                        "name": "path",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Stored path",
+                        "schema": {
+                            "$ref": "#/definitions/api.UploadResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or invalid form fields",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "413": {
+                        "description": "Upload exceeds configured limit",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/api.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/healthz": {
             "get": {
                 "description": "Returns {\"ok\": true} when the service is running",
@@ -43,7 +139,7 @@ const docTemplate = `{
         },
         "/run": {
             "post": {
-                "description": "Pulls the image if not cached, then runs the command inside a\ngVisor sandbox. Returns stdout, stderr, exit code, and wall time.",
+                "description": "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.\nFiles listed in ` + "`" + `files` + "`" + ` must be uploaded first via POST /files; each is bind-mounted read-only at /\u003cpath\u003e inside the container.\nOutput files written to /output/ inside the container are captured and retrievable via GET /files?path=output/\u003cexec_id\u003e/\u003cfilename\u003e only when persist=true is set; they are deleted by default.",
                 "consumes": [
                     "application/json"
                 ],
@@ -67,13 +163,13 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Command completed (any exit code)",
+                        "description": "Command completed (any exit code is valid — check exit_code)",
                         "schema": {
                             "$ref": "#/definitions/api.RunResponse"
                         }
                     },
                     "400": {
-                        "description": "Invalid request body",
+                        "description": "Invalid request body or file not found",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -85,13 +181,13 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal error (pull failed, runsc error)",
+                        "description": "Internal error (image pull failed, runsc error)",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
                     },
                     "507": {
-                        "description": "Output exceeded limit",
+                        "description": "stdout or stderr exceeded the configured output limit",
                         "schema": {
                             "$ref": "#/definitions/api.ErrorResponse"
                         }
@@ -124,7 +220,9 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "python -c 'print(\"hello world\")'"
+                        "python3",
+                        "-c",
+                        "print('hello world')"
                     ]
                 },
                 "cwd": {
@@ -137,7 +235,19 @@ const docTemplate = `{
                         "type": "string"
                     },
                     "example": [
-                        "HOME=/root"
+                        "HOME=/root",
+                        "PYTHONPATH=/app"
+                    ]
+                },
+                "files": {
+                    "description": "Files lists relative paths of files previously uploaded via POST /files.\nEach file is bind-mounted read-only at /\u003cpath\u003e inside the container.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "workspace/script.py",
+                        "workspace/data.json"
                     ]
                 },
                 "image": {
@@ -146,12 +256,31 @@ const docTemplate = `{
                 },
                 "limits": {
                     "$ref": "#/definitions/config.ResourceLimits"
+                },
+                "network": {
+                    "description": "Network sets the container network mode: none (default, no access),\nsandbox (isolated NAT namespace), or host (shared host network).",
+                    "type": "string",
+                    "default": "none",
+                    "enum": [
+                        "none",
+                        "sandbox",
+                        "host"
+                    ],
+                    "example": "none"
+                },
+                "persist": {
+                    "description": "Persist keeps uploaded input files and captured output files after the run.\nDefault false: all files are deleted once the response is returned.",
+                    "type": "boolean"
                 }
             }
         },
         "api.RunResponse": {
             "type": "object",
             "properties": {
+                "exec_id": {
+                    "type": "string",
+                    "example": "boxer-abc123"
+                },
                 "exit_code": {
                     "type": "integer",
                     "example": 0
@@ -167,6 +296,15 @@ const docTemplate = `{
                 "wall_ms": {
                     "type": "integer",
                     "example": 342
+                }
+            }
+        },
+        "api.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "example": "workspace/script.py"
                 }
             }
         },

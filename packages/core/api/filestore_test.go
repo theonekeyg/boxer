@@ -130,6 +130,30 @@ func TestFileStore_CaptureOutput(t *testing.T) {
 	}
 }
 
+func TestFileStore_CaptureOutput_Recursive(t *testing.T) {
+	fs := newTestFileStore(t)
+	srcDir := t.TempDir()
+
+	// Nested file: simulates container writing to /output/subdir/nested.json.
+	subDir := filepath.Join(srcDir, "subdir")
+	if err := os.MkdirAll(subDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "nested.json"), []byte(`{"ok":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	execID := "boxer-test-recursive"
+	if err := fs.CaptureOutput(execID, srcDir); err != nil {
+		t.Fatal(err)
+	}
+
+	destPath := filepath.Join(fs.root, "output", execID, "subdir", "nested.json")
+	if _, err := os.Stat(destPath); err != nil {
+		t.Errorf("expected nested output file to be captured: %v", err)
+	}
+}
+
 func TestFileStore_CaptureOutput_EmptyDir(t *testing.T) {
 	fs := newTestFileStore(t)
 	srcDir := t.TempDir()
