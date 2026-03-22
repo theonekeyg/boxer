@@ -9,6 +9,29 @@ import TabItem from '@theme/TabItem';
 
 Every execution has an explicit network mode. The default is `none` — no network at all. You opt in to connectivity explicitly per request.
 
+## Setup
+
+<Tabs groupId="sdk-language">
+<TabItem value="python" label="Python" default>
+
+```python
+from boxer import BoxerClient
+
+client = BoxerClient("http://localhost:8080")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { BoxerClient } from "boxer-sdk";
+
+const client = new BoxerClient({ baseUrl: "http://localhost:8080" });
+```
+
+</TabItem>
+</Tabs>
+
 ```json
 {
   "image": "python:3.12-slim",

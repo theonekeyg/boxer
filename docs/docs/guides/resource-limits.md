@@ -9,6 +9,29 @@ import TabItem from '@theme/TabItem';
 
 Every execution runs inside a gVisor sandbox with configurable hard limits on CPU, memory, time, and process count. Limits can be set server-side as defaults and overridden per request.
 
+## Setup
+
+<Tabs groupId="sdk-language">
+<TabItem value="python" label="Python" default>
+
+```python
+from boxer import BoxerClient
+
+client = BoxerClient("http://localhost:8080")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { BoxerClient } from "boxer-sdk";
+
+const client = new BoxerClient({ baseUrl: "http://localhost:8080" });
+```
+
+</TabItem>
+</Tabs>
+
 ## Available limits
 
 | Field | Unit | Description |

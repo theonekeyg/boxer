@@ -14,6 +14,29 @@ Boxer has a server-side file store for passing data in and out of containers. Th
 3. **Write** output to `/output/` inside the container
 4. **Download** captured output files after the run (`GET /files?path=output/<exec_id>/...`)
 
+## Setup
+
+<Tabs groupId="sdk-language">
+<TabItem value="python" label="Python" default>
+
+```python
+from boxer import BoxerClient
+
+client = BoxerClient("http://localhost:8080")
+```
+
+</TabItem>
+<TabItem value="typescript" label="TypeScript">
+
+```typescript
+import { BoxerClient } from "boxer-sdk";
+
+const client = new BoxerClient({ baseUrl: "http://localhost:8080" });
+```
+
+</TabItem>
+</Tabs>
+
 ## Uploading input files
 
 <Tabs groupId="sdk-language">
