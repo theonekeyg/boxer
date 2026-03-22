@@ -14,8 +14,8 @@ const sidebars: SidebarsConfig = {
     },
     {
       type: 'category',
-      label: 'Python SDK',
-      items: ['sdk/python'],
+      label: 'SDKs',
+      items: ['sdk/python', 'sdk/typescript'],
     },
     {
       type: 'category',

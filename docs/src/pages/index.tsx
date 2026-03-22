@@ -4,6 +4,8 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
 
 import styles from './index.module.css';
 
@@ -104,18 +106,18 @@ export default function Home(): ReactNode {
               Quick Start
             </Heading>
             <div className="row">
-              <div className="col col--6">
-                <Heading as="h3">REST API</Heading>
-                <pre><code>{`curl -s http://localhost:8080/run \\
+              <div className="col col--8 col--offset-2">
+                <Tabs>
+                  <TabItem value="rest" label="REST API" default>
+                    <pre><code>{`curl -s http://localhost:8080/run \\
   -H 'Content-Type: application/json' \\
   -d '{
     "image": "python:3.12-slim",
     "cmd": ["python3", "-c", "print(42)"]
   }'`}</code></pre>
-              </div>
-              <div className="col col--6">
-                <Heading as="h3">Python SDK</Heading>
-                <pre><code>{`from boxer import BoxerClient
+                  </TabItem>
+                  <TabItem value="python" label="Python SDK">
+                    <pre><code>{`from boxer import BoxerClient
 
 with BoxerClient("http://localhost:8080") as c:
     result = c.run(
@@ -123,6 +125,20 @@ with BoxerClient("http://localhost:8080") as c:
         cmd=["python3", "-c", "print(42)"],
     )
     print(result.stdout)  # 42`}</code></pre>
+                  </TabItem>
+                  <TabItem value="typescript" label="TypeScript SDK">
+                    <pre><code>{`import { BoxerClient } from "boxer-sdk";
+
+const client = new BoxerClient({
+  baseUrl: "http://localhost:8080",
+});
+const result = await client.run(
+  "python:3.12-slim",
+  ["python3", "-c", "print(42)"],
+);
+console.log(result.stdout); // 42`}</code></pre>
+                  </TabItem>
+                </Tabs>
               </div>
             </div>
             <div style={{textAlign: 'center', marginTop: '2rem'}}>

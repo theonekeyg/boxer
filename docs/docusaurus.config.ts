@@ -86,6 +86,7 @@ const config: Config = {
           items: [
             {label: 'Getting Started', to: '/docs/intro'},
             {label: 'Python SDK', to: '/docs/sdk/python'},
+            {label: 'TypeScript SDK', to: '/docs/sdk/typescript'},
             {label: 'API Reference', to: '/api/'},
           ],
         },
