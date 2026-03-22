@@ -6,6 +6,7 @@ import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import CodeBlock from '@theme/CodeBlock';
 
 import styles from './index.module.css';
 
@@ -109,25 +110,25 @@ export default function Home(): ReactNode {
               <div className="col col--8 col--offset-2">
                 <Tabs>
                   <TabItem value="rest" label="REST API" default>
-                    <pre><code>{`curl -s http://localhost:8080/run \\
+                    <CodeBlock language="bash">{`curl -s http://localhost:8080/run \\
   -H 'Content-Type: application/json' \\
   -d '{
     "image": "python:3.12-slim",
     "cmd": ["python3", "-c", "print(42)"]
-  }'`}</code></pre>
+  }'`}</CodeBlock>
                   </TabItem>
                   <TabItem value="python" label="Python SDK">
-                    <pre><code>{`from boxer import BoxerClient
+                    <CodeBlock language="python">{`from boxer import BoxerClient
 
 with BoxerClient("http://localhost:8080") as c:
     result = c.run(
         image="python:3.12-slim",
         cmd=["python3", "-c", "print(42)"],
     )
-    print(result.stdout)  # 42`}</code></pre>
+    print(result.stdout)  # 42`}</CodeBlock>
                   </TabItem>
                   <TabItem value="typescript" label="TypeScript SDK">
-                    <pre><code>{`import { BoxerClient } from "boxer-sdk";
+                    <CodeBlock language="typescript">{`import { BoxerClient } from "boxer-sdk";
 
 const client = new BoxerClient({
   baseUrl: "http://localhost:8080",
@@ -136,7 +137,7 @@ const result = await client.run(
   "python:3.12-slim",
   ["python3", "-c", "print(42)"],
 );
-console.log(result.stdout); // 42`}</code></pre>
+console.log(result.stdout); // 42`}</CodeBlock>
                   </TabItem>
                 </Tabs>
               </div>
