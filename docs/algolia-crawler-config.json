@@ -2,7 +2,6 @@
   "index_name": "boxer",
   "start_urls": ["https://theonekeyg.github.io/boxer/"],
   "sitemap_urls": ["https://theonekeyg.github.io/boxer/sitemap.xml"],
-  "sitemap_alternate_links": true,
   "stop_urls": ["/tests"],
   "selectors": {
     "lvl0": {
@@ -36,7 +35,5 @@
       "url_without_anchor",
       "type"
     ]
-  },
-  "conversation_id": ["833762294"],
-  "nb_hits": 46250
+  }
 }

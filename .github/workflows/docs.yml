@@ -52,3 +52,17 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  index:
+    needs: deploy
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Index docs with Algolia
+        run: |
+          docker run --rm \
+            -e APPLICATION_ID=${{ secrets.ALGOLIA_APP_ID }} \
+            -e API_KEY=${{ secrets.ALGOLIA_WRITE_API_KEY }} \
+            -e "CONFIG=$(cat docs/algolia-crawler-config.json | jq -r tostring)" \
+            algolia/docsearch-scraper

@@ -42,9 +42,10 @@ Add three secrets to **GitHub → Settings → Secrets and variables → Actions
 
 | Secret name | Value |
 |---|---|
-| `ALGOLIA_APP_ID` | From Algolia email |
-| `ALGOLIA_SEARCH_API_KEY` | From Algolia email (search-only key) |
-| `ALGOLIA_INDEX_NAME` | From Algolia email (typically `boxer`) |
+| `ALGOLIA_APP_ID` | From Algolia dashboard |
+| `ALGOLIA_SEARCH_API_KEY` | Search-only API key (safe to expose in browser) |
+| `ALGOLIA_WRITE_API_KEY` | Write API key (used only by CI scraper, never in browser) |
+| `ALGOLIA_INDEX_NAME` | Index name (e.g. `boxer`) |
 
 The next push to `main` will automatically include search in the build.
 

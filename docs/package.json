@@ -4,15 +4,16 @@
   "private": true,
   "scripts": {
     "docusaurus": "docusaurus",
-    "start": "dotenv -e .env.local -- docusaurus start",
-    "build": "dotenv -e .env.local -- docusaurus build",
+    "start": "dotenv -e .env -- docusaurus start",
+    "build": "dotenv -e .env -- docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
     "serve": "docusaurus serve",
     "write-translations": "docusaurus write-translations",
     "write-heading-ids": "docusaurus write-heading-ids",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "index": "dotenv -e .env -- sh -c 'docker run --rm -e APPLICATION_ID=$ALGOLIA_APP_ID -e API_KEY=$ALGOLIA_WRITE_API_KEY -e \"CONFIG=$(cat algolia-crawler-config.json | jq -r tostring)\" algolia/docsearch-scraper'"
   },
   "dependencies": {
     "@docusaurus/core": "3.9.2",
