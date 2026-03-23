@@ -10,7 +10,7 @@ const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? 'boxer';
 const config: Config = {
   title: 'Boxer',
   tagline: 'Sandboxed container execution powered by gVisor',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/icon-wb.svg',
 
   future: {
     v4: true,
@@ -62,7 +62,11 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Boxer',
+      logo: {
+        alt: 'Boxer',
+        src: 'img/icon-wb.svg',
+        style: {height: '32px'},
+      },
       items: [
         {
           type: 'docSidebar',
@@ -109,7 +113,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Boxer Contributors. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Boxer Contributors.`,
     },
     prism: {
       theme: prismThemes.github,

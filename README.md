@@ -1,4 +1,23 @@
-# Boxer
+<p align="center">
+  <img src="./_assets/icon-wb.svg" alt="Boxer" height="180" />
+</p>
+
+<h3 align="center">Sandboxed container execution powered by gVisor</h3>
+
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
+  <a href="packages/core/go.mod"><img src="https://img.shields.io/badge/go-1.22+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
+  <a href="https://pypi.org/project/boxer-sdk/"><img src="https://img.shields.io/pypi/v/boxer-sdk?label=PyPI&color=orange" alt="PyPI"></a>
+  <a href="https://theonekeyg.github.io/boxer/"><img src="https://img.shields.io/badge/docs-online-brightgreen" alt="Docs"></a>
+</p>
+
+<p align="center">
+  <a href="https://theonekeyg.github.io/boxer/">Documentation</a> &nbsp;·&nbsp;
+  <a href="#getting-started">Quick Start</a> &nbsp;·&nbsp;
+  <a href="https://github.com/theonekeyg/boxer/issues">Issues</a>
+</p>
+
+---
 
 Boxer is a sandboxed container execution service backed by [gVisor](https://gvisor.dev/). It exposes a simple HTTP API for running arbitrary commands inside any container image, with strong isolation guarantees and configurable resource limits.
 
@@ -68,27 +87,6 @@ curl -s http://localhost:8080/run \
 ```
 
 Swagger UI is available at `http://localhost:8080/swagger`.
-
-## Configuration
-
-Key fields in `config.json`:
-
-| Field | Default | Description |
-|---|---|---|
-| `home` | `~/.boxer` | Base directory for all boxer data |
-| `runsc_path` | *(PATH lookup)* | Path to `runsc` binary |
-| `platform` | `systrap` | gVisor platform: `systrap`, `ptrace`, or `kvm` |
-| `listen_addr` | `:8080` | HTTP listen address |
-| `ignore_cgroups` | `false` | Skip cgroup setup (useful for rootless/dev) |
-| `output_limit_bytes` | `10485760` | Maximum bytes captured per stream (stdout/stderr) |
-| `upload_limit_bytes` | `10485760` | Maximum multipart upload size buffered in RAM |
-| `defaults.cpu_cores` | `1.0` | Default CPU limit per execution |
-| `defaults.memory_mb` | `256` | Default memory limit (MB) |
-| `defaults.wall_clock_secs` | `30` | Default execution timeout |
-| `defaults.pids_limit` | `64` | Default max processes per execution |
-| `defaults.nofile` | `256` | Default max open file descriptors per execution |
-
-Per-request limits in `POST /run` override the configured defaults.
 
 ## Examples
 
