@@ -106,7 +106,7 @@ info:
   description: 'Sandbox execution service: pull any container image, run arbitrary
     commands inside gVisor.'
   license:
-    name: MIT
+    name: Apache 2.0
   title: Boxer API
   version: "1.0"
 paths:
