@@ -1,18 +1,11 @@
-import {readFileSync} from 'fs';
-import {join} from 'path';
 import {themes as prismThemes} from 'prism-react-renderer';
 import type {Config} from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
-import type {ScalarOptions} from '@scalar/docusaurus';
+import type {PluginOptions as OpenApiPluginOptions} from 'docusaurus-plugin-openapi-docs';
 
 const algoliaAppId = process.env.ALGOLIA_APP_ID ?? '';
 const algoliaSearchKey = process.env.ALGOLIA_SEARCH_API_KEY ?? '';
 const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? 'boxer';
-
-const swaggerSpec = readFileSync(
-  join(__dirname, '../packages/core/docs/swagger.yaml'),
-  'utf8',
-);
 
 const config: Config = {
   title: 'Boxer',
@@ -42,39 +35,54 @@ const config: Config = {
   },
 
   plugins: [
-    [
-      '@scalar/docusaurus',
-      {
-        label: 'API Reference',
-        route: '/api/',
-        configuration: {
-          spec: {content: swaggerSpec},
-          theme: 'default',
-          customCss: `
-            :root {
-              --scalar-color-1: #2E343B;
-              --scalar-color-accent: #FF8D28;
-              --scalar-background-1: #ffffff;
-              --scalar-background-2: #f8f9fa;
-              --scalar-background-3: #f1f3f4;
-              --scalar-border-color: #e1e4e8;
-            }
-            .dark-mode {
-              --scalar-color-1: #e6edf3;
-              --scalar-color-accent: #FF8D28;
-              --scalar-background-1: #1a1f24;
-              --scalar-background-2: #22272e;
-              --scalar-background-3: #2d333b;
-              --scalar-border-color: #373e47;
-            }
-            .scalar-app {
-              font-family: var(--ifm-font-family-base);
-            }
-          `,
+    function webpackNodeFallback() {
+      return {
+        name: 'webpack-node-fallback',
+        configureWebpack() {
+          return {
+            resolve: {
+              fallback: {
+                path: false,
+                fs: false,
+                os: false,
+                child_process: false,
+                http: false,
+                https: false,
+                net: false,
+                tls: false,
+                stream: false,
+                zlib: false,
+                url: false,
+                assert: false,
+                util: false,
+                crypto: false,
+                buffer: false,
+              },
+            },
+          };
         },
-      } satisfies ScalarOptions,
+      };
+    },
+    [
+      'docusaurus-plugin-openapi-docs',
+      {
+        id: 'openapi',
+        docsPluginId: 'classic',
+        config: {
+          boxer: {
+            specPath: '../packages/core/docs/swagger.yaml',
+            outputDir: 'docs/api',
+            sidebarOptions: {
+              groupPathsBy: 'tag',
+              categoryLinkSource: 'tag',
+            },
+          },
+        },
+      } satisfies OpenApiPluginOptions,
     ],
   ],
+
+  themes: ['docusaurus-theme-openapi-docs'],
 
   presets: [
     [
@@ -83,6 +91,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl: 'https://github.com/theonekeyg/boxer/tree/main/docs/',
+          docItemComponent: '@theme/ApiItem',
         },
         blog: false,
         theme: {
@@ -110,6 +119,12 @@ const config: Config = {
           label: 'Docs',
         },
         {
+          type: 'docSidebar',
+          sidebarId: 'api',
+          position: 'left',
+          label: 'API Reference',
+        },
+        {
           href: 'https://github.com/theonekeyg/boxer',
           label: 'GitHub',
           position: 'right',
@@ -125,7 +140,7 @@ const config: Config = {
             {label: 'Getting Started', to: '/docs/intro'},
             {label: 'Python SDK', to: '/docs/sdk/python'},
             {label: 'TypeScript SDK', to: '/docs/sdk/typescript'},
-            {label: 'API Reference', to: '/api/'},
+            {label: 'API Reference', to: '/docs/api/boxer-api'},
           ],
         },
         {

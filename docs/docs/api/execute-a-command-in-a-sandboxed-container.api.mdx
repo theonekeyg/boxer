@@ -1,0 +1,71 @@
+---
+id: execute-a-command-in-a-sandboxed-container
+title: "Execute a command in a sandboxed container"
+description: "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox."
+sidebar_label: "Execute a command in a sandboxed container"
+hide_title: true
+hide_table_of_contents: true
+api: eJztV9tuGzcQ/ZUBX2IDa0l2UjRQYBRO6jZ+SGw0bovCNuxZcmQx5pIbkitpIQjoR/QL+yXFcHeta9OmQYEUqF+s5ZBz4cycOZwLRUF6XUbtrBiKi8qYAHFMoAu8J9AjsC6CRDkmlYF0NkRfyRgAYYxekSUF56/OIK+sMpQBWgW+so0O6YqCF7QNWhEg3P+kg/MQ0KrczXrX9jttKIDRIRJvg7sRL9xBUYUIOUFVGoeKFIy0DxEmGuHi/N0l9NO+F0Aox6AD5Nqqg8JVlvV4QnXgrKkBI9z1S4zju86Hxi0bUVvyvWt7XsWyipDUwdTrGMlCdNB3SdDfeQ7QE0gsY+VJNSFT9JommBtKTt59f9o5+Q3bP27VzWlG8larRX/OQosFLe4g+Todk4WSfNAhHkdfEccVKL5g23UyqcgQB5jXoGiElYk9kQlPHyoK8aVTtRjOBXtJNvJPLEujJXJu++8DJ3gughxTgfyr9K4kHzWFdKxQ/I9mWJSGxPBKlHUcO/tUZOJAikyUXtu492RMxjiYOm/Uk31xkwkdqUgaYl2SGIoQvbb3YpGJQtuzRniYdVL0HmsWyum6PdHHshTZthaykw3HXp+/OT3ue+eiyMTFL5evz99enFy+Pk4aPurRphMpQbxzvQuWVRnAk8GoJwScxgBu1NZK6WmiXRVMvSzSjfLsXdtTrk/++IwiFdlq8FPnH0KJkvqNx72yFtnKqsKIvZTsT7qJ1O7rCWnyP3zaOzw6CEYXu5JjdKFj2FFNZXUrnadV47YqcvKpMKhwvr4t8hWptpHuG7F1fGO7ZaVW4TZZ3S2fojG30jj5cBtIhl2bltG7/D3JmExS5CtsSiF1FjvsLIlsozbeNju5M8MGKrRKoHCKhsCnYa/VloF1gFJSCPvZtW0BEPZ0cAa5HN6eXAKjQUrifgbOw9iFCHthjAwy6aM1sJ9KwlYF10PrZKtRZIJ3cu6XiWy3bCWvBZvt+r9oBPBAVIZleWu7hEoGvUcEdKsgiqNIPt2Mr2zv2n7b3ACM0AQaAhrTbVxBNGdlU/aeQulsSP3iKVbekuotnc+dM4Q2JZFxT3tSfAuMXl0R32zll3evR3g6I1nxbyjRY0GRfBCrKhmAk43GnVRIR4PB9l29amecdHzbHMse2hpopiNIp1IgEzRawe+//gZyTPIhCW9ZuC+yf4rX7SBZb9nczcgfYC4Pj57uxNLO8NqxQbajkUJU5P26+l0qQ1Suiuv7VmbEtd11KHVpEdZOPX12tO3Hdq+mZD7blYkz29xzOw8hd6rmPkrwyyxm5CqrPuPGvXcbF9KQpLLimkZtSA3XDG3E/afBPN8O5mc05iDhGERdkKsi0EwSKfoCI/hqdzoieYsGklXY27KUJaIoG/nndMK/FtXX21E15c5l1TTIY1a6WTDS96uY2IyqLyw2XsT7wMBJHRAybBYUx07x6OcZkgkmJczMfMVdHMhPGCaHV3NRecOCvnESDU+c4fPB84FY3GSCQ/phSUlPO8dbivm3eWUiiB0rTCTwr5lfy+c+lSU13GcX4VnymxVGM1hjMIMlYRms85PBDjoyWCUb3WR+HMTt1NF25Doqj5KLZmuAvWsZxGP+gNOjJQ2b0uAZtGQmKcLUb4A+19Gjr7vXWehYZ/M466WoJdmQcsacRAzFm7PLxBp1TDX4kucMnFyciUxwTTQ+HfYGiVa4EAu0K6ebacsPwOWLELB7BpJaerpJt1aeM/+/Tf+Db9MWeyLNYr80qC0XSAKPeYsuV4LR5ablrcMrMZ/nGOhHbxYLXv5Qka/F8OomExP0mqPgr0UmxoSKfIKjB6oTFUulcnDJRnm7qdIbZxNvF1l34kRKKuNH967CIqdXZCJvX9pFIlLC45SpI04bhuRS6SbMSGtzYdDeVw3ENDr57w8VJhnt
+sidebar_class_name: "post api-method"
+info_path: docs/api/boxer-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Execute a command in a sandboxed container"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"post"}
+  path={"/run"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
+Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at `/path` inside the container.
+Output files written to /output/ inside the container are captured and retrievable via `GET /files?path=output/{exec_id}/{filename}` only when persist=true is set; they are deleted by default.
+
+<Heading
+  id={"request"}
+  as={"h2"}
+  className={"openapi-tabs__heading"}
+>
+  <Translate id="theme.openapi.request.title">Request</Translate>
+</Heading>
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./execute-a-command-in-a-sandboxed-container.RequestSchema.json")}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  {...require("./execute-a-command-in-a-sandboxed-container.StatusCodes.json")}
+>
+  
+</StatusCodes>
+
+
+      

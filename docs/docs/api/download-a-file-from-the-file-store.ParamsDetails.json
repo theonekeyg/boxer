@@ -1,0 +1,1 @@
+{"parameters":[{"description":"Relative file path (e.g. output/boxer-abc123/result.json)","in":"query","name":"path","required":true,"schema":{"type":"string"}}]}
