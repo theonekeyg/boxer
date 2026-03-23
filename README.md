@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./_assets/icon.svg" alt="Boxer" height="160" />
+  <img src="/_assets/icon.svg" alt="Boxer" height="160" />
 </p>
 
 # Boxer
