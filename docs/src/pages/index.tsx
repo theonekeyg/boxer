@@ -16,10 +16,7 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
-        <BoxerLogo style={{height: '120px', marginBottom: '1.5rem'}} role="img" aria-label="Boxer logo" />
-        <Heading as="h1" className="hero__title">
-          {siteConfig.title}
-        </Heading>
+        <BoxerLogo style={{height: '160px', marginBottom: '1.5rem'}} role="img" aria-label="Boxer logo" />
         <p className="hero__subtitle">{siteConfig.tagline}</p>
         <div className={styles.buttons}>
           <Link className="button button--secondary button--lg" to="/docs/intro">

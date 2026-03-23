@@ -113,7 +113,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Boxer Contributors. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Boxer Contributors.`,
     },
     prism: {
       theme: prismThemes.github,
