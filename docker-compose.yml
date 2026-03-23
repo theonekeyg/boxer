@@ -16,6 +16,13 @@ services:
     privileged: true
     volumes:
       - boxer-data:/root/.boxer
+      # docker/config.json sets ignore_cgroups=true so gVisor doesn't try to
+      # manage cgroups itself — Docker already owns the outer cgroup hierarchy
+      # and nested cgroup creation typically fails without explicit delegation.
+      # Trade-off: per-execution CPU/memory limits in POST /run are accepted
+      # but NOT enforced in this configuration. For production deployments that
+      # need limit enforcement, configure cgroup v2 delegation on the host
+      # (systemd: "Delegate=yes") and set ignore_cgroups=false.
       - ./docker/config.json:/etc/boxer/config.json:ro
     environment:
       - BOXER_CONFIG=/etc/boxer/config.json
