@@ -30,7 +30,7 @@ definitions:
       files:
         description: |-
           Files lists relative paths of files previously uploaded via POST /files.
-          Each file is bind-mounted read-only at `/path` inside the container.
+          Each file is bind-mounted read-only at /path inside the container.
         example:
         - workspace/script.py
         - workspace/data.json
@@ -113,7 +113,7 @@ paths:
   /files:
     get:
       description: Download any file by its relative path. To retrieve output files
-        written by a container to /output/, use the path pattern `output/{exec_id}/{filename}`.
+        written by a container to /output/, use the path pattern output/{exec_id}/{filename}.
       parameters:
       - description: Relative file path (e.g. output/boxer-abc123/result.json)
         in: query
@@ -142,7 +142,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Multipart upload. The stored file can be referenced by its path
-        in POST /run — it is bind-mounted read-only at `/path` inside the container.
+        in POST /run — it is bind-mounted read-only at /path inside the container.
       parameters:
       - description: File content
         in: formData
@@ -197,8 +197,8 @@ paths:
       - application/json
       description: |-
         Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
-        Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at `/path` inside the container.
-        Output files written to /output/ inside the container are captured and retrievable via `GET /files?path=output/{exec_id}/{filename}` only when persist=true is set; they are deleted by default.
+        Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /path inside the container.
+        Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/{exec_id}/{filename} only when persist=true is set; they are deleted by default.
       parameters:
       - description: Execution parameters
         in: body
@@ -232,4 +232,6 @@ paths:
       summary: Execute a command in a sandboxed container
       tags:
       - execution
+schemes:
+- http
 swagger: "2.0"

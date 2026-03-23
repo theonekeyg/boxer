@@ -20,7 +20,7 @@ const docTemplate = `{
     "paths": {
         "/files": {
             "get": {
-                "description": "Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/\u003cexec_id\u003e/\u003cfilename\u003e.",
+                "description": "Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/{exec_id}/{filename}.",
                 "produces": [
                     "application/octet-stream"
                 ],
@@ -59,7 +59,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /\u003cpath\u003e inside the container.",
+                "description": "Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /path inside the container.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -139,7 +139,7 @@ const docTemplate = `{
         },
         "/run": {
             "post": {
-                "description": "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.\nFiles listed in ` + "`" + `files` + "`" + ` must be uploaded first via POST /files; each is bind-mounted read-only at /\u003cpath\u003e inside the container.\nOutput files written to /output/ inside the container are captured and retrievable via GET /files?path=output/\u003cexec_id\u003e/\u003cfilename\u003e only when persist=true is set; they are deleted by default.",
+                "description": "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.\nFiles listed in ` + "`" + `files` + "`" + ` must be uploaded first via POST /files; each is bind-mounted read-only at /path inside the container.\nOutput files written to /output/ inside the container are captured and retrievable via GET /files?path=output/{exec_id}/{filename} only when persist=true is set; they are deleted by default.",
                 "consumes": [
                     "application/json"
                 ],
@@ -240,7 +240,7 @@ const docTemplate = `{
                     ]
                 },
                 "files": {
-                    "description": "Files lists relative paths of files previously uploaded via POST /files.\nEach file is bind-mounted read-only at /\u003cpath\u003e inside the container.",
+                    "description": "Files lists relative paths of files previously uploaded via POST /files.\nEach file is bind-mounted read-only at /path inside the container.",
                     "type": "array",
                     "items": {
                         "type": "string"
@@ -336,7 +336,7 @@ var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
 	Host:             "localhost:8080",
 	BasePath:         "/",
-	Schemes:          []string{},
+	Schemes:          []string{"http"},
 	Title:            "Boxer API",
 	Description:      "Sandbox execution service: pull any container image, run arbitrary commands inside gVisor.",
 	InfoInstanceName: "swagger",

@@ -6,6 +6,7 @@
 // @license.name   MIT
 // @host           localhost:8080
 // @BasePath       /
+// @schemes        http
 package main
 
 import (
