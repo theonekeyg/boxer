@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./_assets/icon.svg" alt="Boxer" height="160" />
+</p>
+
 # Boxer
 
 Boxer is a sandboxed container execution service backed by [gVisor](https://gvisor.dev/). It exposes a simple HTTP API for running arbitrary commands inside any container image, with strong isolation guarantees and configurable resource limits.
