@@ -74,7 +74,7 @@ func (s *FileStore) Delete(path string) error {
 // if the container writes no files to /output/, no directory is created in the file store.
 func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 	destDir := filepath.Join(s.root, "output", execID)
-	return filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
+	if err := filepath.WalkDir(srcDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("walk output dir: %w", err)
 		}
@@ -96,7 +96,10 @@ func (s *FileStore) CaptureOutput(execID, srcDir string) error {
 			return fmt.Errorf("copy %s: %w", rel, err)
 		}
 		return nil
-	})
+	}); err != nil {
+		return fmt.Errorf("capture output: %w", err)
+	}
+	return nil
 }
 
 // PurgeOutput removes the output directory for the given execution ID.
