@@ -1,0 +1,25 @@
+services:
+  boxer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    # Boxer needs elevated privileges to:
+    #   - run gVisor (runsc) as a nested container runtime
+    #   - create network namespaces (unshare CLONE_NEWNET + bind-mount)
+    #   - manage the boxer0 bridge, veth pairs, and nftables rules
+    #
+    # For tighter production deployments, replace `privileged` with:
+    #   cap_add: [NET_ADMIN, SYS_ADMIN]
+    #   security_opt: [seccomp=unconfined]
+    privileged: true
+    volumes:
+      - boxer-data:/root/.boxer
+      - ./docker/config.json:/etc/boxer/config.json:ro
+    environment:
+      - BOXER_CONFIG=/etc/boxer/config.json
+    restart: unless-stopped
+
+volumes:
+  boxer-data:
