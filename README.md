@@ -88,27 +88,6 @@ curl -s http://localhost:8080/run \
 
 Swagger UI is available at `http://localhost:8080/swagger`.
 
-## Configuration
-
-Key fields in `config.json`:
-
-| Field | Default | Description |
-|---|---|---|
-| `home` | `~/.boxer` | Base directory for all boxer data |
-| `runsc_path` | *(PATH lookup)* | Path to `runsc` binary |
-| `platform` | `systrap` | gVisor platform: `systrap`, `ptrace`, or `kvm` |
-| `listen_addr` | `:8080` | HTTP listen address |
-| `ignore_cgroups` | `false` | Skip cgroup setup (useful for rootless/dev) |
-| `output_limit_bytes` | `10485760` | Maximum bytes captured per stream (stdout/stderr) |
-| `upload_limit_bytes` | `10485760` | Maximum multipart upload size buffered in RAM |
-| `defaults.cpu_cores` | `1.0` | Default CPU limit per execution |
-| `defaults.memory_mb` | `256` | Default memory limit (MB) |
-| `defaults.wall_clock_secs` | `30` | Default execution timeout |
-| `defaults.pids_limit` | `64` | Default max processes per execution |
-| `defaults.nofile` | `256` | Default max open file descriptors per execution |
-
-Per-request limits in `POST /run` override the configured defaults.
-
 ## Examples
 
 ### [`examples/hello-world`](examples/hello-world)
