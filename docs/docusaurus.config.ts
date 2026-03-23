@@ -10,7 +10,7 @@ const algoliaIndexName = process.env.ALGOLIA_INDEX_NAME ?? 'boxer';
 const config: Config = {
   title: 'Boxer',
   tagline: 'Sandboxed container execution powered by gVisor',
-  favicon: 'img/favicon.ico',
+  favicon: 'img/logo.svg',
 
   future: {
     v4: true,
@@ -62,7 +62,11 @@ const config: Config = {
       respectPrefersColorScheme: true,
     },
     navbar: {
-      title: 'Boxer',
+      logo: {
+        alt: 'Boxer',
+        src: 'img/logo.svg',
+        style: {height: '32px'},
+      },
       items: [
         {
           type: 'docSidebar',

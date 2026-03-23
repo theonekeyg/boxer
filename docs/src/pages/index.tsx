@@ -8,6 +8,7 @@ import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 import CodeBlock from '@theme/CodeBlock';
 
+import BoxerLogo from '@site/static/img/logo.svg';
 import styles from './index.module.css';
 
 function HomepageHeader() {
@@ -15,6 +16,7 @@ function HomepageHeader() {
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className="container">
+        <BoxerLogo style={{height: '120px', marginBottom: '1.5rem'}} role="img" aria-label="Boxer logo" />
         <Heading as="h1" className="hero__title">
           {siteConfig.title}
         </Heading>
