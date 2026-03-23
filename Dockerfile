@@ -9,7 +9,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /boxer .
 # Stage 2: Download and verify runsc (gVisor). Supports amd64 and arm64 hosts.
 # curl is kept out of the final runtime image by doing the download here.
 FROM debian:bookworm-slim AS runsc-fetcher
-ARG RUNSC_VERSION=latest
+ARG RUNSC_VERSION=20260316.0
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
         curl \
