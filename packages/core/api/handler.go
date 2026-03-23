@@ -96,8 +96,9 @@ func (h *Handler) UploadFile(c *gin.Context) {
 // @Description Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/{exec_id}/{filename}.
 // @Tags        files
 // @Produce     application/octet-stream
+// @Produce     json
 // @Param       path  query  string  true  "Relative file path (e.g. output/boxer-abc123/result.json)"
-// @Success     200   {file}  file  "File contents"
+// @Success     200   {file}  file          "File contents"
 // @Failure     400   {object}  ErrorResponse  "Missing or invalid path"
 // @Failure     404   {object}  ErrorResponse  "File not found"
 // @Router      /files [get]

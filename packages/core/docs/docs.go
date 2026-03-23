@@ -22,7 +22,8 @@ const docTemplate = `{
             "get": {
                 "description": "Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/{exec_id}/{filename}.",
                 "produces": [
-                    "application/octet-stream"
+                    "application/octet-stream",
+                    "application/json"
                 ],
                 "tags": [
                     "files"

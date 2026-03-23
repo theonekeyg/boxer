@@ -122,6 +122,7 @@ paths:
         type: string
       produces:
       - application/octet-stream
+      - application/json
       responses:
         "200":
           description: File contents
