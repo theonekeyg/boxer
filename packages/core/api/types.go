@@ -10,7 +10,8 @@ type RunRequest struct {
 	Cwd     string                 `json:"cwd"     example:"/app"`
 	Limits  *config.ResourceLimits `json:"limits"`
 	// Files lists relative paths of files previously uploaded via POST /files.
-	// Each file is bind-mounted read-only at /path inside the container.
+	// Each file is bind-mounted read-only at /{path} inside the container
+	// (e.g. uploading workspace/script.py makes it available at /workspace/script.py).
 	Files   []string `json:"files"   example:"workspace/script.py,workspace/data.json"`
 	// Persist keeps uploaded input files and captured output files after the run.
 	// Default false: all files are deleted once the response is returned.
@@ -36,5 +37,5 @@ type UploadResponse struct {
 
 // ErrorResponse is returned on all non-200 responses.
 type ErrorResponse struct {
-	Error string `json:"error" example:"image pull failed: not found"`
+	Error string `json:"error" example:"operation failed"`
 }

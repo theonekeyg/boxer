@@ -43,7 +43,7 @@ func (h *Handler) Health(c *gin.Context) {
 
 // UploadFile godoc
 // @Summary     Upload a file to the file store
-// @Description Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /path inside the container.
+// @Description Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /{path} inside the container (e.g. uploading workspace/script.py makes it available at /workspace/script.py).
 // @Tags        files
 // @Accept      multipart/form-data
 // @Produce     json
@@ -126,7 +126,7 @@ func (h *Handler) DownloadFile(c *gin.Context) {
 // Run godoc
 // @Summary     Execute a command in a sandboxed container
 // @Description Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
-// @Description Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /path inside the container.
+// @Description Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /{path} inside the container (e.g. workspace/script.py → /workspace/script.py).
 // @Description Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/{exec_id}/{filename} only when persist=true is set; they are deleted by default.
 // @Tags        execution
 // @Accept      json

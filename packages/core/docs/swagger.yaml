@@ -3,7 +3,7 @@ definitions:
   api.ErrorResponse:
     properties:
       error:
-        example: 'image pull failed: not found'
+        example: operation failed
         type: string
     type: object
   api.RunRequest:
@@ -30,7 +30,8 @@ definitions:
       files:
         description: |-
           Files lists relative paths of files previously uploaded via POST /files.
-          Each file is bind-mounted read-only at /path inside the container.
+          Each file is bind-mounted read-only at /{path} inside the container
+          (e.g. uploading workspace/script.py makes it available at /workspace/script.py).
         example:
         - workspace/script.py
         - workspace/data.json
@@ -143,7 +144,8 @@ paths:
       consumes:
       - multipart/form-data
       description: Multipart upload. The stored file can be referenced by its path
-        in POST /run — it is bind-mounted read-only at /path inside the container.
+        in POST /run — it is bind-mounted read-only at /{path} inside the container
+        (e.g. uploading workspace/script.py makes it available at /workspace/script.py).
       parameters:
       - description: File content
         in: formData
@@ -198,7 +200,7 @@ paths:
       - application/json
       description: |-
         Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
-        Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /path inside the container.
+        Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /{path} inside the container (e.g. workspace/script.py → /workspace/script.py).
         Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/{exec_id}/{filename} only when persist=true is set; they are deleted by default.
       parameters:
       - description: Execution parameters
