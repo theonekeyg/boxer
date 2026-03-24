@@ -1,0 +1,61 @@
+---
+id: health-check
+title: "Health check"
+description: "Returns {'ok': true} when the service is running"
+sidebar_label: "Health check"
+hide_title: true
+hide_table_of_contents: true
+api: eJydUk1vEzEQ/SvWO1tN6KnyrUgIEAcqvi5pDhPvkHXjtY09GxJW+9/RbFpRyg1fLL3nGc97byZ03HwNRUJOcPjEMtbUzHSPfLiHM1JHns3PnpORnk3jegyeTWimjimFtIdF5VZyatzgJlyv13r93fbjB1j4nISTKEulxOBJ2dVD0ycTmu95oIXtuqAUxbuaC1cJl9ZyLgyHXc6RKWG2T0jePbAXzHoshPYNboN2bsIDthYDS587OOxZYFFIejiseqYo/S9YqCyuWjVhrBEOvUhxq1XMnmKfm7ib9c0a89YipO9Zp1E55FXObF/I/Uyp2+WT4RP7UbEn35wpY4yG0tks5SFxNWGgPVv101DdBalUlR4GSl0zIbXQsdl/Cy3XK1jE4Dk11hESDSr/tpDv2VxfrRdPgkRFX+cTV3N79x4WKu4y2qvLo5KbDJSeNXm3mGF8z/6AF4KmP9n934Y85iR8klWJFJbwFqOnxzQ2eEpja6GGKzRNO2r8tcZ5VvjHyPUMt9laHKkG2qnOzXa2WttxXeI78Fkt8Z6LZn2kOOrX/2zc/Hwv3r75gnn+DWWJDHk=
+sidebar_class_name: "get api-method"
+info_path: docs/api/boxer-api
+custom_edit_url: null
+---
+
+import MethodEndpoint from "@theme/ApiExplorer/MethodEndpoint";
+import ParamsDetails from "@theme/ParamsDetails";
+import RequestSchema from "@theme/RequestSchema";
+import StatusCodes from "@theme/StatusCodes";
+import OperationTabs from "@theme/OperationTabs";
+import TabItem from "@theme/TabItem";
+import Heading from "@theme/Heading";
+import Translate from "@docusaurus/Translate";
+
+<Heading
+  as={"h1"}
+  className={"openapi__heading"}
+  children={"Health check"}
+>
+</Heading>
+
+<MethodEndpoint
+  method={"get"}
+  path={"/healthz"}
+  context={"endpoint"}
+>
+  
+</MethodEndpoint>
+
+
+
+Returns \{"ok": true\} when the service is running
+
+<ParamsDetails
+  parameters={undefined}
+>
+  
+</ParamsDetails>
+
+<RequestSchema
+  {...require("./health-check.RequestSchema.json")}
+>
+  
+</RequestSchema>
+
+<StatusCodes
+  {...require("./health-check.StatusCodes.json")}
+>
+  
+</StatusCodes>
+
+
+      

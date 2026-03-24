@@ -1,0 +1,1 @@
+{"title":"Body","body":{"content":{"multipart/form-data":{"schema":{"type":"object","properties":{"file":{"description":"File content","type":"string","format":"binary"},"path":{"description":"Relative destination path (e.g. workspace/script.py)","type":"string"}},"required":["file","path"]}}},"required":true}}

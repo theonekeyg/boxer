@@ -3,9 +3,10 @@
 // @title          Boxer API
 // @version        1.0
 // @description    Sandbox execution service: pull any container image, run arbitrary commands inside gVisor.
-// @license.name   MIT
+// @license.name   Apache 2.0
 // @host           localhost:8080
 // @BasePath       /
+// @schemes        http
 package main
 
 import (

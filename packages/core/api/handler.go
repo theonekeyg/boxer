@@ -43,7 +43,7 @@ func (h *Handler) Health(c *gin.Context) {
 
 // UploadFile godoc
 // @Summary     Upload a file to the file store
-// @Description Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /<path> inside the container.
+// @Description Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /path inside the container.
 // @Tags        files
 // @Accept      multipart/form-data
 // @Produce     json
@@ -93,7 +93,7 @@ func (h *Handler) UploadFile(c *gin.Context) {
 
 // DownloadFile godoc
 // @Summary     Download a file from the file store
-// @Description Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/<exec_id>/<filename>.
+// @Description Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/{exec_id}/{filename}.
 // @Tags        files
 // @Produce     application/octet-stream
 // @Param       path  query  string  true  "Relative file path (e.g. output/boxer-abc123/result.json)"
@@ -125,8 +125,8 @@ func (h *Handler) DownloadFile(c *gin.Context) {
 // Run godoc
 // @Summary     Execute a command in a sandboxed container
 // @Description Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.
-// @Description Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /<path> inside the container.
-// @Description Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/<exec_id>/<filename> only when persist=true is set; they are deleted by default.
+// @Description Files listed in `files` must be uploaded first via POST /files; each is bind-mounted read-only at /path inside the container.
+// @Description Output files written to /output/ inside the container are captured and retrievable via GET /files?path=output/{exec_id}/{filename} only when persist=true is set; they are deleted by default.
 // @Tags        execution
 // @Accept      json
 // @Produce     json
