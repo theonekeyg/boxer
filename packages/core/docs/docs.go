@@ -22,7 +22,8 @@ const docTemplate = `{
             "get": {
                 "description": "Download any file by its relative path. To retrieve output files written by a container to /output/, use the path pattern output/{exec_id}/{filename}.",
                 "produces": [
-                    "application/octet-stream"
+                    "application/octet-stream",
+                    "application/json"
                 ],
                 "tags": [
                     "files"
@@ -59,7 +60,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /path inside the container.",
+                "description": "Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /{path} inside the container (e.g. uploading workspace/script.py makes it available at /workspace/script.py).",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -139,7 +140,7 @@ const docTemplate = `{
         },
         "/run": {
             "post": {
-                "description": "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.\nFiles listed in ` + "`" + `files` + "`" + ` must be uploaded first via POST /files; each is bind-mounted read-only at /path inside the container.\nOutput files written to /output/ inside the container are captured and retrievable via GET /files?path=output/{exec_id}/{filename} only when persist=true is set; they are deleted by default.",
+                "description": "Pulls the image if not cached, constructs a hardened OCI bundle, and runs the command inside a gVisor sandbox.\nFiles listed in ` + "`" + `files` + "`" + ` must be uploaded first via POST /files; each is bind-mounted read-only at /{path} inside the container (e.g. workspace/script.py → /workspace/script.py).\nOutput files written to /output/ inside the container are captured and retrievable via GET /files?path=output/{exec_id}/{filename} only when persist=true is set; they are deleted by default.",
                 "consumes": [
                     "application/json"
                 ],
@@ -202,7 +203,7 @@ const docTemplate = `{
             "properties": {
                 "error": {
                     "type": "string",
-                    "example": "image pull failed: not found"
+                    "example": "operation failed"
                 }
             }
         },
@@ -240,7 +241,7 @@ const docTemplate = `{
                     ]
                 },
                 "files": {
-                    "description": "Files lists relative paths of files previously uploaded via POST /files.\nEach file is bind-mounted read-only at /path inside the container.",
+                    "description": "Files lists relative paths of files previously uploaded via POST /files.\nEach file is bind-mounted read-only at /{path} inside the container\n(e.g. uploading workspace/script.py makes it available at /workspace/script.py).",
                     "type": "array",
                     "items": {
                         "type": "string"

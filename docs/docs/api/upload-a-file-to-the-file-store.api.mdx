@@ -1,11 +1,11 @@
 ---
 id: upload-a-file-to-the-file-store
 title: "Upload a file to the file store"
-description: "Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /path inside the container."
+description: "Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /{path} inside the container (e.g. uploading workspace/script.py makes it available at /workspace/script.py)."
 sidebar_label: "Upload a file to the file store"
 hide_title: true
 hide_table_of_contents: true
-api: eJzNVcGO2zYQ/ZXBnFpAazlpCwS6bQoUyCFIkGx6WfgwEsf2JBTJkKOtBUNAP6Jf2C8pSFmIHfsQ9LQnEUNy5r3HmacjGk5dlKDiHTb4drAqgaLCEKwns4KHPUNSH9nAVixDRw5ahshbjuw6NtCOIJogkO5BHLx/9/EB6jg4+Pfvf0AUJEErztz1fnDKBiKTufPOjkAK9elaEsOge4bOOyVxHFdYYeSvAyd97c2IzRHzHjvNy34BWm997O8MKeVw6vbcl5WOgbFB337mTrHCEH3gqMIp72Yq+XvJ/o9C8FSkWlIkjeJ2WGGuRIoNtuIojjhVmNFf5/nAllSeGAwnFUc5POvzE692K/jLxy8pUMf1fGsVxp+v6k3TzF8iG2weZ8inipvpclfjwCWQgndppvhyvb5G9nF+yZKkOteTQrDSFaT155TPnot5Kd5Cmg/Uh6wj3iB0k8/lo0yFxa+3cL6VlMTtwEcQ90RWDGT1YStsTfr/0DlGHy+xS087hjBYC1sSy6YB5xW2fnDmx0m8+OWaxKcyQsCHjtmk3Fhb2Q1Zfyu96PNj8dutp3jjlKMjC3PVZwY6B2mXlgFJuKmwZ917gw0Gn3QZmQbr+UCFieMTx3zniEO02OBeNTR1bX1Hdu+TNq/Wr9Y4bSoUt/WL9VCXSU/V9zNFzrT+AHzgbiijngtIx81Mjdz4zdWgcK4g+yPFVjRSzNt9T86kxQh3f0ryxQGtdOxS8SpHfSZ/H6jbM7xcrbMBqWiR8rU/cIT792+wwkxuhvZiPpR16MmdJTm1Js2err5Yb1kXr8fvOJ5Z73P7RZxaQvmgdbAkLhMur7oY1Vln5LfNgeOxpcSfop2mHP46cByxedxU+ERRqM2SPm6mCvdMhmPplC88YoO/zzrcPeSy+bgdcvlbv6OpWi7ddx0HPTt+NTfTedtmebDC9vTX673Jd3Likrf6tswgp+k/n121RQ==
+api: eJzdVcGOGzcM/RWCpxaYtZ20BYK5bQoUyCFIkGx6CfbAGdE2sxpJkTiuDWOAfkS/sF9ScMaD2LEPQU5BT5YpinzvzRN1RMelzZJUYsAaX/deJVFW6JOP5BbwsGUoGjM7WItnaClAw5B5zZlDyw6aA4gWSKRbkABv37x/gGXuA/z79z8gClKgkeDuutgHZQeZyd3F4A9ACsujnRtAQhHHoFuGNgYlCZzhJ15sFickEjbwV8xPJVHLywnzIh2goycu1oZ2JJ4az2PZG6k/L7DCzJ97LvoyugPWR7ReHNSW3Ux9uY65u3OkZOHSbrkbV3pIjDXG5hO3ihWmHBNnFS62a+LY76Wef4ySnZpUc4miWcIGK7ROpFhjI4HyAYcKTY7rOu/Yk8qOwXFRCWThSfFJo1t0r/oNw8RfMjusP06QTx0fh8tdzT2PgZJiKBPF56vVNbL3kzfGItW5npSSl3ZEuvxULPdczEvxZtK8py6ZjniD0E0+lx9lGFn8egvnaynFPBQzSNiRFwemPqyFvSvfD51zjvkSu21PX2hN4tl9O/Bnv1wD/zDaH3jfMrtiZlrLpjfNvXSiPwby325J/ioo50Aepk4/AFAL0qbM5i/4WGHHuo0Oa0yx6HwdalxOCRUWzjvOduaIffZY41Y11culjy35bSxav1i9WOHwWKGEdZzHCrVGdKi+vi8UXBP3wHtu+5GBNZCWa0i990DhcDYBpaMNV2DTlHIjminbdtdRcGUemps/pcRs081Ly6GMcyhQZ+TvE7VbhueLlQ0XFR3lexn3nOH+7Sus0MhN0J5NSaZDR+GsyMmCNL0AGscxPa7HlwG/4ng2Vv//D8rJZMp7XSZPEkzC0SfzWDvzmrnFAsdjQ4U/ZD8MFv7ccz5g/fGxwh1lsZ72b6hwy+Q4j9574gPW+Puk7N2DtbV031v7W4/XUM2H7tuWk56lX92+4fwimOBYYXN6I7vo7IwVHutWX5YGchj+A5qB5Zk=
 sidebar_class_name: "post api-method"
 info_path: docs/api/boxer-api
 custom_edit_url: null
@@ -37,7 +37,7 @@ import Translate from "@docusaurus/Translate";
 
 
 
-Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /path inside the container.
+Multipart upload. The stored file can be referenced by its path in POST /run — it is bind-mounted read-only at /\{path\} inside the container (e.g. uploading workspace/script.py makes it available at /workspace/script.py).
 
 <Heading
   id={"request"}

@@ -170,10 +170,10 @@ All errors return a JSON body with an \`error\` field:
 
 A \`200\` response does **not** imply the command succeeded — always check \`exit_code\`.
 
-<div style={{"marginBottom":"var(--ifm-paragraph-margin-bottom)"}}>
+${license?.name ? `<div style={{"marginBottom":"var(--ifm-paragraph-margin-bottom)"}}>
   <h3 style={{"marginBottom":"0.25rem"}}>License</h3>
-  <span>${license?.name ?? 'Apache 2.0'}</span>
-</div>
+  <span>${license.name}</span>
+</div>` : ''}
 `,
             },
           },
@@ -190,7 +190,10 @@ A \`200\` response does **not** imply the command succeeded — always check \`e
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          editUrl: 'https://github.com/theonekeyg/boxer/tree/main/docs/',
+          editUrl: ({docPath}) =>
+            docPath.startsWith('api/')
+              ? undefined
+              : `https://github.com/theonekeyg/boxer/tree/main/docs/docs/${docPath}`,
           docItemComponent: '@theme/ApiItem',
         },
         blog: false,
