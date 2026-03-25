@@ -51,14 +51,24 @@ curl http://localhost:8080/healthz
 
 ## Configuration
 
-By default the container uses built-in defaults. To override, mount a config file:
+The image ships with a Docker-optimised config (see `docker/config.json` in the repository). To override it, mount your own config file over the default path:
 
 ```bash
 docker run -d \
   --privileged \
   -p 8080:8080 \
   -v /path/to/your/config.json:/etc/boxer/config.json:ro \
-  -e BOXER_CONFIG=/etc/boxer/config.json \
+  theonekeyg/boxer
+```
+
+To mount to a different path, also set `BOXER_CONFIG`:
+
+```bash
+docker run -d \
+  --privileged \
+  -p 8080:8080 \
+  -v /path/to/your/config.json:/my/config.json:ro \
+  -e BOXER_CONFIG=/my/config.json \
   theonekeyg/boxer
 ```
 
