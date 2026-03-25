@@ -31,6 +31,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=runsc-fetcher /tmp/runsc /usr/local/bin/runsc
 COPY --from=builder /boxer /usr/local/bin/boxer
+# Default config for containerised deployments:
+#   ignore_cgroups: Docker already owns the outer cgroup hierarchy; nested
+#                   cgroup creation fails without explicit host delegation.
+#   dns_servers:    Explicit resolvers instead of reading /etc/resolv.conf,
+#                   which reflects the host's stub resolver and is meaningless
+#                   inside an isolated network namespace.
+# Users can override by mounting a config file and setting $BOXER_CONFIG.
+COPY docker/config.json /etc/boxer/config.json
+ENV BOXER_CONFIG=/etc/boxer/config.json
 
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
