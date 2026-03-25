@@ -92,6 +92,27 @@ with BoxerClient("http://localhost:8080") as client:
 
 See [`packages/sdk/python`](packages/sdk/python) for the full SDK reference including async support, file upload/download, resource limits, and error handling.
 
+### TypeScript / Node.js SDK
+
+```bash
+npm install boxer-sdk
+```
+
+```typescript
+import { BoxerClient } from "boxer-sdk";
+
+const client = new BoxerClient({ baseUrl: "http://localhost:8080" });
+const result = await client.run(
+  "python:3.12-slim",
+  ["python3", "-c", "print('hello world')"],
+);
+console.log(result.stdout);    // hello world
+console.log(result.exit_code); // 0
+console.log(result.wall_ms);   // e.g. 312
+```
+
+See [`packages/sdk/typescript`](packages/sdk/typescript) for the full SDK reference including file upload/download, resource limits, and error handling.
+
 ### REST API
 
 ```bash
