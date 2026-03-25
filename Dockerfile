@@ -23,12 +23,16 @@ RUN ARCH=$(dpkg --print-architecture | sed 's/amd64/x86_64/;s/arm64/aarch64/') &
 
 # Stage 3: Minimal runtime image — no curl, no build tools.
 FROM debian:bookworm-slim
-# CA certs are required for pulling images from HTTPS registries.
+# ca-certificates: required for pulling images from HTTPS registries.
+# wget: used by the HEALTHCHECK probe below.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ca-certificates \
+        wget \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=runsc-fetcher /tmp/runsc /usr/local/bin/runsc
 COPY --from=builder /boxer /usr/local/bin/boxer
 
 EXPOSE 8080
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+    CMD wget -qO- http://localhost:8080/healthz || exit 1
 ENTRYPOINT ["/usr/local/bin/boxer"]
