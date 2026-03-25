@@ -1,0 +1,12 @@
+services:
+  boxer:
+    image: theonekeyg/boxer  # pin to a specific tag (e.g. theonekeyg/boxer:1.0.0) for production
+    ports:
+      - "8080:8080"
+    privileged: true
+    volumes:
+      - boxer-data:/root/.boxer  # matches the default "home" dir; update if you override it in config
+    restart: unless-stopped
+
+volumes:
+  boxer-data:

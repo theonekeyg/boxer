@@ -26,12 +26,13 @@ This makes Boxer a good fit for:
 
 Files can be uploaded before a run and bind-mounted read-only inside the container. Output files written to `/output/` inside the container are captured and retrievable after the run.
 
-## Prerequisites
+## Installation
 
-- [gVisor `runsc`](https://gvisor.dev/docs/user_guide/install/) installed and in `PATH`
-- Go 1.22+
+The quickest way to get Boxer running is via Docker — see the [Docker installation guide](./installation/docker.md).
 
-## Run the Server
+To build from source (for contributors or custom deployments):
+
+**Prerequisites:** [gVisor `runsc`](https://gvisor.dev/docs/user_guide/install/) in `PATH`, Go 1.22+
 
 ```bash
 cd packages/core

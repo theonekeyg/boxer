@@ -11,6 +11,11 @@ const sidebars: SidebarsConfig = {
     'intro',
     {
       type: 'category',
+      label: 'Installation',
+      items: ['installation/docker'],
+    },
+    {
+      type: 'category',
       label: 'Guides',
       items: [
         'guides/files',
