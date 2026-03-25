@@ -219,8 +219,15 @@ func (h *Handler) Run(c *gin.Context) { //nolint:gocyclo,funlen // Run covers al
 	// Actually we build spec first, then create bundle. To avoid a chicken-and-egg
 	// situation with the output dir path, we derive it ourselves here.
 	outputHostPath := sandbox.OutputPath(h.cfg.StateRoot(), execID)
-	if err := os.MkdirAll(outputHostPath, 0o755); err != nil { //nolint:gosec // 0o755 required for output directory
+	if err := os.MkdirAll(outputHostPath, 0o777); err != nil { //nolint:gosec // 0o777: container process may run as an unprivileged UID (e.g. nobody/65534) and must be able to write here
 		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "create output dir: " + err.Error()})
+		return
+	}
+	// MkdirAll respects the process umask (typically 0022), which would reduce
+	// 0o777 to 0o755 and deny writes from unprivileged container UIDs. Chmod
+	// bypasses the umask and sets the mode we actually need.
+	if err := os.Chmod(outputHostPath, 0o777); err != nil { //nolint:gosec // intentional: see above
+		c.JSON(http.StatusInternalServerError, ErrorResponse{Error: "chmod output dir: " + err.Error()})
 		return
 	}
 	// Guard against the execRoot being orphaned if Build or NewBundleDir fails.

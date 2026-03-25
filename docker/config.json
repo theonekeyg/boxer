@@ -1,0 +1,5 @@
+{
+  "platform": "systrap",
+  "ignore_cgroups": true,
+  "dns_servers": ["8.8.8.8", "8.8.4.4"]
+}

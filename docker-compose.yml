@@ -1,0 +1,32 @@
+services:
+  boxer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    # Boxer needs elevated privileges to:
+    #   - run gVisor (runsc) as a nested container runtime
+    #   - create network namespaces (unshare CLONE_NEWNET + bind-mount)
+    #   - manage the boxer0 bridge, veth pairs, and nftables rules
+    #
+    # For tighter production deployments, replace `privileged` with:
+    #   cap_add: [NET_ADMIN, SYS_ADMIN]
+    #   security_opt: [seccomp=unconfined]
+    privileged: true
+    volumes:
+      - boxer-data:/root/.boxer
+      # docker/config.json sets ignore_cgroups=true so gVisor doesn't try to
+      # manage cgroups itself — Docker already owns the outer cgroup hierarchy
+      # and nested cgroup creation typically fails without explicit delegation.
+      # Trade-off: per-execution CPU/memory limits in POST /run are accepted
+      # but NOT enforced in this configuration. For production deployments that
+      # need limit enforcement, configure cgroup v2 delegation on the host
+      # (systemd: "Delegate=yes") and set ignore_cgroups=false.
+      - ./docker/config.json:/etc/boxer/config.json:ro
+    environment:
+      - BOXER_CONFIG=/etc/boxer/config.json
+    restart: unless-stopped
+
+volumes:
+  boxer-data:

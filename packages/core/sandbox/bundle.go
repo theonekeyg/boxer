@@ -39,10 +39,25 @@ func NewBundleDir(stateRoot, execID string, spec *specs.Spec) (*BundleDir, error
 	runscState := filepath.Join(execRoot, "runsc-state")
 	outputDir := filepath.Join(execRoot, "output")
 
-	for _, dir := range []string{bundlePath, runscState, outputDir} {
+	for _, dir := range []string{bundlePath, runscState} {
 		if err := os.MkdirAll(dir, 0o755); err != nil { //nolint:gosec // 0o755 required for bundle directories
 			return nil, fmt.Errorf("create bundle dir: %w", err)
 		}
+	}
+	// Output dir must be world-writable: the container process may run as an
+	// unprivileged UID (e.g. nobody/65534 when boxer runs as root) and must
+	// be able to write to /output inside the sandbox.
+	//
+	// Note: handler.go also creates this directory before calling NewBundleDir
+	// so it can include the path in the OCI spec mount list. The MkdirAll here
+	// is intentional defence-in-depth for callers that bypass the handler.
+	if err := os.MkdirAll(outputDir, 0o777); err != nil { //nolint:gosec // 0o777 intentional — see above
+		return nil, fmt.Errorf("create output dir: %w", err)
+	}
+	// Chmod bypasses the process umask so the mode is exactly 0o777, allowing
+	// an unprivileged container UID (e.g. nobody/65534) to write to /output.
+	if err := os.Chmod(outputDir, 0o777); err != nil { //nolint:gosec // intentional: see above
+		return nil, fmt.Errorf("chmod output dir: %w", err)
 	}
 
 	configJSON, err := json.MarshalIndent(spec, "", "  ")
