@@ -1,0 +1,66 @@
+---
+sidebar_position: 1
+---
+
+# Docker
+
+The easiest way to run Boxer is via the pre-built image published on DockerHub.
+
+## Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) installed and running
+- The host must support nested cgroup management (most Linux distributions with cgroup v2 do)
+
+## Run with Docker Compose (recommended)
+
+Download the production compose file and start the service:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/theonekeyg/boxer/main/docker-compose.prod.yml -o docker-compose.prod.yml
+curl -fsSL https://raw.githubusercontent.com/theonekeyg/boxer/main/docker/config.json -o docker/config.json
+docker compose -f docker-compose.prod.yml up -d
+```
+
+The server will be available at `http://localhost:8080`.
+
+## Run with Docker
+
+```bash
+docker run -d \
+  --privileged \
+  -p 8080:8080 \
+  theonekeyg/boxer
+```
+
+:::note Why `--privileged`?
+Boxer manages cgroups, network namespaces, and spawns gVisor (`runsc`) to sandbox each execution. These operations require elevated privileges on the host. Without `--privileged`, container creation will fail with a cgroup permission error.
+:::
+
+## Verify
+
+```bash
+curl http://localhost:8080/healthz
+```
+
+## Available Tags
+
+| Tag | Description |
+|---|---|
+| `latest` | Latest build from `main` |
+| `1.2.3` | Specific release version |
+| `1.2` | Latest patch of a minor version |
+
+## Configuration
+
+By default the container uses built-in defaults. To override, mount a config file:
+
+```bash
+docker run -d \
+  --privileged \
+  -p 8080:8080 \
+  -v /path/to/your/config.json:/etc/boxer/config.json:ro \
+  -e BOXER_CONFIG=/etc/boxer/config.json \
+  theonekeyg/boxer
+```
+
+See the [Getting Started](../intro.md#configuration) page for all available configuration fields.
