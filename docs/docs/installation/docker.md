@@ -52,7 +52,37 @@ curl http://localhost:8080/healthz
 
 ## Configuration
 
-The image ships with a Docker-optimised config (see `docker/config.json` in the repository). To override it, mount your own config file over the default path:
+The image ships with a Docker-optimised config (see `docker/config.json` in the repository). To override it, mount your own config file.
+
+### Docker Compose
+
+Mount to the default path (no env var needed):
+
+```yaml
+services:
+  boxer:
+    image: theonekeyg/boxer
+    volumes:
+      - /path/to/your/config.json:/etc/boxer/config.json:ro
+      - boxer-data:/root/.boxer
+```
+
+Or mount to a custom path and set `BOXER_CONFIG`:
+
+```yaml
+services:
+  boxer:
+    image: theonekeyg/boxer
+    environment:
+      - BOXER_CONFIG=/my/config.json
+    volumes:
+      - /path/to/your/config.json:/my/config.json:ro
+      - boxer-data:/root/.boxer
+```
+
+### Docker
+
+Mount to the default path:
 
 ```bash
 docker run -d \
@@ -62,7 +92,7 @@ docker run -d \
   theonekeyg/boxer
 ```
 
-To mount to a different path, also set `BOXER_CONFIG`:
+Or mount to a custom path and set `BOXER_CONFIG`:
 
 ```bash
 docker run -d \
