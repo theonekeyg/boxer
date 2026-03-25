@@ -8,6 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
   <a href="packages/core/go.mod"><img src="https://img.shields.io/badge/go-1.22+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
   <a href="https://pypi.org/project/boxer-sdk/"><img src="https://img.shields.io/pypi/v/boxer-sdk?label=PyPI&color=orange" alt="PyPI"></a>
+  <a href="https://www.npmjs.com/package/boxer-sdk"><img src="https://img.shields.io/npm/v/boxer-sdk?label=npm&color=red" alt="npm"></a>
   <a href="https://theonekeyg.github.io/boxer/"><img src="https://img.shields.io/badge/docs-online-brightgreen" alt="Docs"></a>
 </p>
 
