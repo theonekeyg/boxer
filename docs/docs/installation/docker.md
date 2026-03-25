@@ -16,6 +16,7 @@ The easiest way to run Boxer is via the pre-built image published on DockerHub.
 Download the production compose file and start the service:
 
 ```bash
+# Replace "main" with the version tag you want to deploy, e.g. refs/tags/v1.0.0
 curl -fsSL https://raw.githubusercontent.com/theonekeyg/boxer/main/docker-compose.prod.yml -o docker-compose.prod.yml
 docker compose -f docker-compose.prod.yml up -d
 ```

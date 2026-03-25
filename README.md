@@ -52,6 +52,7 @@ docker run -d --privileged -p 8080:8080 theonekeyg/boxer
 Or with Docker Compose:
 
 ```bash
+# Replace "main" with the version tag you want to deploy, e.g. refs/tags/v1.0.0
 curl -fsSL https://raw.githubusercontent.com/theonekeyg/boxer/main/docker-compose.prod.yml -o docker-compose.prod.yml
 docker compose -f docker-compose.prod.yml up -d
 ```
