@@ -36,6 +36,10 @@ docker run -d \
 Boxer manages cgroups, network namespaces, and spawns gVisor (`runsc`) to sandbox each execution. These operations require elevated privileges on the host. Without `--privileged`, container creation will fail with a cgroup permission error.
 :::
 
+:::warning Resource limits are not enforced in the default Docker config
+The baked-in `docker/config.json` sets `ignore_cgroups: true` because Docker already owns the outer cgroup hierarchy. As a result, CPU, memory, and PID limits specified in `POST /run` requests are accepted but **not enforced** by the kernel. If you need hard resource limits, configure the host for nested cgroup delegation (systemd: `Delegate=yes`) and mount a custom config with `ignore_cgroups: false`.
+:::
+
 ## Verify
 
 ```bash
