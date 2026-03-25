@@ -43,12 +43,24 @@ Files can be uploaded before a run and bind-mounted read-only inside the contain
 
 ## Getting Started
 
-### Prerequisites
+### Docker (recommended)
 
-- [gVisor `runsc`](https://gvisor.dev/docs/user_guide/install/) installed and in `PATH`
-- Go 1.22+
+```bash
+docker run -d --privileged -p 8080:8080 theonekeyg/boxer
+```
 
-### Run the server
+Or with Docker Compose:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/theonekeyg/boxer/main/docker-compose.prod.yml -o docker-compose.prod.yml
+docker compose -f docker-compose.prod.yml up -d
+```
+
+> **Why `--privileged`?** Boxer manages cgroups and network namespaces and spawns gVisor to sandbox each execution. See the [Docker installation guide](https://theonekeyg.github.io/boxer/installation/docker) for details.
+
+### Build from Source
+
+**Prerequisites:** [gVisor `runsc`](https://gvisor.dev/docs/user_guide/install/) in `PATH`, Go 1.22+
 
 ```bash
 cd packages/core
