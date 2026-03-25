@@ -62,9 +62,15 @@ Mount to the default path (no env var needed):
 services:
   boxer:
     image: theonekeyg/boxer
+    privileged: true
+    ports:
+      - "8080:8080"
     volumes:
       - /path/to/your/config.json:/etc/boxer/config.json:ro
       - boxer-data:/root/.boxer
+
+volumes:
+  boxer-data:
 ```
 
 Or mount to a custom path and set `BOXER_CONFIG`:
@@ -73,11 +79,17 @@ Or mount to a custom path and set `BOXER_CONFIG`:
 services:
   boxer:
     image: theonekeyg/boxer
+    privileged: true
+    ports:
+      - "8080:8080"
     environment:
       - BOXER_CONFIG=/my/config.json
     volumes:
       - /path/to/your/config.json:/my/config.json:ro
       - boxer-data:/root/.boxer
+
+volumes:
+  boxer-data:
 ```
 
 ### Docker
