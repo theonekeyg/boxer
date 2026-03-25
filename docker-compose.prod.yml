@@ -6,9 +6,6 @@ services:
     privileged: true
     volumes:
       - boxer-data:/root/.boxer
-      - ./docker/config.json:/etc/boxer/config.json:ro
-    environment:
-      - BOXER_CONFIG=/etc/boxer/config.json
     restart: unless-stopped
 
 volumes:

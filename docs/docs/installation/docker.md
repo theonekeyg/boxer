@@ -17,7 +17,6 @@ Download the production compose file and start the service:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/theonekeyg/boxer/main/docker-compose.prod.yml -o docker-compose.prod.yml
-curl -fsSL https://raw.githubusercontent.com/theonekeyg/boxer/main/docker/config.json -o docker/config.json
 docker compose -f docker-compose.prod.yml up -d
 ```
 
