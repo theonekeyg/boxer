@@ -8,6 +8,7 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License"></a>
   <a href="packages/core/go.mod"><img src="https://img.shields.io/badge/go-1.22+-00ADD8?logo=go&logoColor=white" alt="Go"></a>
   <a href="https://pypi.org/project/boxer-sdk/"><img src="https://img.shields.io/pypi/v/boxer-sdk?label=PyPI&color=orange" alt="PyPI"></a>
+  <a href="https://www.npmjs.com/package/boxer-sdk"><img src="https://img.shields.io/npm/v/boxer-sdk?label=npm&color=red" alt="npm"></a>
   <a href="https://theonekeyg.github.io/boxer/"><img src="https://img.shields.io/badge/docs-online-brightgreen" alt="Docs"></a>
 </p>
 
@@ -90,6 +91,27 @@ with BoxerClient("http://localhost:8080") as client:
 ```
 
 See [`packages/sdk/python`](packages/sdk/python) for the full SDK reference including async support, file upload/download, resource limits, and error handling.
+
+### TypeScript / Node.js SDK
+
+```bash
+npm install boxer-sdk
+```
+
+```typescript
+import { BoxerClient } from "boxer-sdk";
+
+const client = new BoxerClient({ baseUrl: "http://localhost:8080" });
+const result = await client.run(
+  "python:3.12-slim",
+  ["python3", "-c", "print('hello world')"],
+);
+console.log(result.stdout);    // hello world
+console.log(result.exit_code); // 0
+console.log(result.wall_ms);   // e.g. 312
+```
+
+See [`packages/sdk/typescript`](packages/sdk/typescript) for the full SDK reference including file upload/download, resource limits, and error handling.
 
 ### REST API
 
